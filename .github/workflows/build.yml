@@ -1,0 +1,126 @@
+# Baut die Windows-Exe (Installer + portable Zip).
+# - Manuell: Actions → Build → "Run workflow" (oder `gh workflow run build.yml`)
+#   → Ergebnis als Artifact am Workflow-Lauf.
+# - Tag `vX.Y.Z` pushen → zusätzlich GitHub Release mit beiden Dateien.
+name: Build
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    env:
+      # Portable CPU-Basis statt der CPU des Build-Runners: ggml würde sonst
+      # z. B. AVX-512 nutzen und auf vielen Desktop-CPUs sofort abstürzen.
+      # AVX2 haben alle Intel-CPUs seit 2013 und alle Ryzen.
+      TRANSCRIBE_CMAKE_ARGS: -DGGML_NATIVE=OFF -DGGML_AVX=ON -DGGML_AVX2=ON -DGGML_FMA=ON -DGGML_F16C=ON -DGGML_BMI2=ON
+
+    steps:
+      - name: Lange Pfade erlauben
+        shell: pwsh
+        run: |
+          New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" `
+            -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force | Out-Null
+          git config --system core.longpaths true
+
+      - uses: actions/checkout@v5
+
+      - uses: oven-sh/setup-bun@v2
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+          cache-bin: false
+
+      - name: Vulkan SDK
+        uses: humbletim/install-vulkan-sdk@v1.2
+        with:
+          version: 1.4.309.0
+          cache: true
+
+      # ggml-vulkan sucht SPIRV-Headers per find_package; das SDK auf dem Runner
+      # liefert keine passende CMake-Config (gleiches Vorgehen wie Handy).
+      - name: SPIRV-Headers
+        shell: pwsh
+        run: |
+          vcpkg install spirv-headers:x64-windows
+          if ($LASTEXITCODE -ne 0) { throw "vcpkg install spirv-headers fehlgeschlagen" }
+          $prefix = "$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows" -replace '\\','/'
+          $combined = if ($env:CMAKE_PREFIX_PATH) { "$prefix;$env:CMAKE_PREFIX_PATH" } else { $prefix }
+          Add-Content $env:GITHUB_ENV "CMAKE_PREFIX_PATH=$combined"
+
+      # Die Exe braucht MSVCP140/VCRUNTIME140. Die DLLs werden neben die Exe
+      # gelegt (app-local), damit sie auch ohne installiertes VC++-Redist startet.
+      - name: Version und Bundle-Konfiguration
+        id: cfg
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vsRoot = & $vswhere -latest -products * -property installationPath
+          $redistVersion = (Get-Content "$vsRoot\VC\Auxiliary\Build\Microsoft.VCRedistVersion.default.txt").Trim()
+          $crt = Get-ChildItem "$vsRoot\VC\Redist\MSVC\$redistVersion\x64" -Directory -Filter "Microsoft.VC*.CRT" |
+            Sort-Object Name | Select-Object -Last 1
+          if (-not $crt) { throw "VC++-Runtime nicht gefunden" }
+          New-Item -ItemType Directory -Force src-tauri\redist | Out-Null
+          Copy-Item "$($crt.FullName)\*.dll" src-tauri\redist\
+          $resources = [ordered]@{}
+          Get-ChildItem src-tauri\redist\*.dll | ForEach-Object { $resources["redist/$($_.Name)"] = $_.Name }
+
+          if ($env:GITHUB_REF -like 'refs/tags/v*') {
+            $version = $env:GITHUB_REF_NAME.Substring(1)
+          } else {
+            $version = (Get-Content src-tauri\tauri.conf.json -Raw | ConvertFrom-Json).version
+          }
+          @{ version = $version; bundle = @{ resources = $resources } } |
+            ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 src-tauri\ci.conf.json
+          Get-Content src-tauri\ci.conf.json
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Frontend-Abhängigkeiten
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        shell: pwsh
+        run: bun run tauri build --config "$env:GITHUB_WORKSPACE\src-tauri\ci.conf.json"
+
+      - name: Dateien zusammenstellen
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = "${{ steps.cfg.outputs.version }}"
+          New-Item -ItemType Directory out, portable | Out-Null
+          Copy-Item src-tauri\target\release\bundle\nsis\*.exe out\
+          Copy-Item src-tauri\target\release\whisper-island.exe "portable\Whisper Island.exe"
+          Copy-Item src-tauri\redist\*.dll portable\
+          Compress-Archive portable\* "out\Whisper-Island_${version}_x64-portable.zip"
+          Get-ChildItem out | Format-Table Name, Length
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: whisper-island-${{ steps.cfg.outputs.version }}
+          path: out/*
+
+      - name: GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" out/* \
+            --title "Whisper Island ${{ steps.cfg.outputs.version }}" \
+            --generate-notes \
+            --notes "Installer (\`*-setup.exe\`) oder portable Zip. Nicht signiert: Windows SmartScreen zeigt beim ersten Start „Unbekannter Herausgeber“ → Weitere Informationen → Trotzdem ausführen."
