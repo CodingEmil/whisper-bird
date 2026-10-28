@@ -1,0 +1,81 @@
+/* Putzen, für den Vogel in der Bubble und auf der Übersicht: Kopf nach vorn,
+ * ein paar Mal knabbern, dann die Federn schütteln. Drehpunkt an den Füßen. */
+.bird.preen {
+  transform-origin: 43% 88%;
+  animation: preen 1.6s var(--ease-in-out);
+}
+.bird.preen .mandible.upper {
+  animation: nibble-upper 1.6s linear;
+}
+.bird.preen .mandible.lower {
+  animation: nibble-lower 1.6s linear;
+}
+@keyframes preen {
+  0%,
+  56%,
+  90%,
+  100% {
+    transform: none;
+  }
+  12%,
+  28% {
+    transform: rotate(14deg);
+  }
+  20%,
+  36% {
+    transform: rotate(10deg);
+  }
+  44% {
+    transform: rotate(13deg);
+  }
+  64% {
+    transform: scale(1.07, 0.94);
+  }
+  72% {
+    transform: scale(0.96, 1.04);
+  }
+  80% {
+    transform: scale(1.03, 0.98);
+  }
+}
+@keyframes nibble-upper {
+  0%,
+  12%,
+  22%,
+  32%,
+  42%,
+  52%,
+  100% {
+    transform: none;
+  }
+  17%,
+  27%,
+  37%,
+  47% {
+    transform: rotate(-12deg);
+  }
+}
+@keyframes nibble-lower {
+  0%,
+  12%,
+  22%,
+  32%,
+  42%,
+  52%,
+  100% {
+    transform: none;
+  }
+  17%,
+  27%,
+  37%,
+  47% {
+    transform: rotate(12deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bird.preen,
+  .bird.preen .mandible {
+    animation: none;
+  }
+}

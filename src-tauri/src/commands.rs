@@ -277,6 +277,23 @@ pub fn stop_shortcut_capture(session: String) {
     state().hotkeys.stop_capture(&session);
 }
 
+/// Tasten aus dem Hauptfenster, in dem der globale Hook nichts sieht.
+#[tauri::command]
+pub fn window_key(modifiers: String, key: Option<String>, down: bool) {
+    let Ok(modifiers) = modifiers.parse() else { return };
+    let key = match key.map(|k| k.parse()) {
+        Some(Ok(k)) => Some(k),
+        Some(Err(_)) => return,
+        None => None,
+    };
+    state().hotkeys.window_key(modifiers, key, down);
+}
+
+#[tauri::command]
+pub fn window_blur() {
+    state().hotkeys.window_blur();
+}
+
 // ---------- Diktat & Overlay ----------
 
 #[tauri::command]
@@ -521,4 +538,16 @@ pub fn open_data_dir(app: AppHandle, which: String) -> CmdResult<()> {
         _ => &st.dirs.data,
     };
     app.opener().open_path(dir.display().to_string(), None::<&str>).map_err(err)
+}
+
+/// Lizenzen Dritter; der Installer legt die Datei neben die Exe.
+#[tauri::command]
+pub fn open_notices(app: AppHandle) -> CmdResult<()> {
+    use tauri::{path::BaseDirectory, Manager};
+    use tauri_plugin_opener::OpenerExt;
+    let path = app
+        .path()
+        .resolve("THIRD-PARTY-NOTICES.txt", BaseDirectory::Resource)
+        .map_err(err)?;
+    app.opener().open_path(path.display().to_string(), None::<&str>).map_err(err)
 }

@@ -74,7 +74,7 @@ export default function Home({ navigate }: { navigate: (p: PageId) => void }) {
             <li>{t("home.step3")}</li>
           </ol>
         </div>
-        <Bird size={128} className="dictate-logo" />
+        <Bird size={128} preen className="dictate-logo" />
         <div className="try">
           <h3 className="try-label">
             <label htmlFor="home-try">{t("home.try")}</label>

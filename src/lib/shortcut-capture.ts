@@ -36,6 +36,36 @@ function keyName(event: KeyboardEvent): string | null {
   return KEYS[event.code] ?? null;
 }
 
+/**
+ * The keyboard as the global hook sees it, for our own window where the hook gets no
+ * events: the side-specific modifiers held and the key of the event (null for a modifier).
+ */
+export class KeyTracker {
+  private held = new Set<string>();
+
+  /** null for a key handy-keys has no name for; the hook ignores those as well. */
+  handle(event: KeyboardEvent, down: boolean): { modifiers: string; key: string | null } | null {
+    const modifier = MODIFIERS[event.code];
+    if (modifier) {
+      if (down) this.held.add(modifier);
+      else this.held.delete(modifier);
+    }
+    // AltGr arrives as Ctrl+Alt; the hook drops that Ctrl, too.
+    const altGr = event.getModifierState("AltGraph");
+    const modifiers = FAMILIES.flatMap(([flag, name]) => {
+      const sides = [...this.held].filter((held) => held.startsWith(name));
+      if (!event[flag] || (altGr && name === "Ctrl")) {
+        for (const side of sides) this.held.delete(side);
+        return [];
+      }
+      return sides.length ? sides : [name];
+    });
+    const key = modifier ? null : keyName(event);
+    if (!modifier && !key) return null;
+    return { modifiers: modifiers.join("+"), key };
+  }
+}
+
 export type CaptureUpdate =
   | { kind: "live"; shortcut: string }
   | { kind: "done"; shortcut: string }

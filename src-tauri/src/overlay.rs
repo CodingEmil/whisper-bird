@@ -266,7 +266,7 @@ fn default_center(app: &AppHandle) -> (f64, f64) {
             let wa = m.work_area();
             let s = m.scale_factor();
             (
-                wa.position.x as f64 + wa.size.width as f64 - 70.0 * s,
+                wa.position.x as f64 + wa.size.width as f64 / 2.0,
                 wa.position.y as f64 + wa.size.height as f64 - 140.0 * s,
             )
         }

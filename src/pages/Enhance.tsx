@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle, Check, Download, FlaskConical, LoaderCircle } from "lucide-react";
 import { api, formatBytes, type DownloadProgress, type EnhanceMode, type EnhanceProvider, type LlamaStatus } from "../lib/api";
-import { Card, Progress, Row, Segmented, Select, Toggle, useApp, useEvent } from "../lib/app";
+import { Card, Progress, Row, Segmented, Select, useApp, useEvent } from "../lib/app";
 import { ModelRow, useModels } from "./Models";
 
 const CLI_PRESETS: Record<string, string> = {
@@ -131,7 +131,7 @@ export default function Enhance() {
                 onChanged={refresh}
               />
             ))}
-          <Row label={t("enh.keep_loaded")} hint={t("enh.keep_loaded_hint")}>
+          <Row label={t("enh.unload")} hint={t("enh.unload_hint")}>
             {llama?.running && (
               <button
                 type="button"
@@ -144,7 +144,17 @@ export default function Enhance() {
                 {t("enh.unload_now")}
               </button>
             )}
-            <Toggle value={s.enhance_keep_loaded} onChange={(enhance_keep_loaded) => update({ enhance_keep_loaded })} />
+            <Select
+              value={String(s.enhance_unload_after_min)}
+              options={[
+                ["2", t("adv.minutes", { n: 2 })],
+                ["5", t("adv.minutes", { n: 5 })],
+                ["15", t("adv.minutes", { n: 15 })],
+                ["60", t("adv.minutes", { n: 60 })],
+                ["0", t("adv.never")],
+              ]}
+              onChange={(v) => update({ enhance_unload_after_min: Number(v) })}
+            />
           </Row>
         </Card>
       )}

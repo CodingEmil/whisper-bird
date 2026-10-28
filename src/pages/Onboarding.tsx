@@ -6,7 +6,7 @@ import { useModels } from "./Models";
 import { WithShortcut } from "./Home";
 import { Bird } from "../lib/bird";
 
-const CHOICES = ["parakeet-tdt-0.6b-v3", "Qwen3-ASR-1.7B", "whisper-large-v3-turbo", "parakeet-unified-en-0.6b"];
+const CHOICES = ["parakeet-ultra","Qwen3-ASR-1.7B", "whisper-large-v3-turbo", "parakeet-unified-en-0.6b"];
 
 export default function Onboarding({ onDone }: { onDone: () => void }) {
   const { t, settings: s, update, lang } = useApp();

@@ -6,7 +6,8 @@ use crate::settings::Activation;
 use crate::state::state;
 use handy_keys::{Hotkey, HotkeyId, HotkeyManager, HotkeyState, Key, Modifiers};
 use serde::Serialize;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::hash::Hash;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
@@ -26,12 +27,40 @@ const HOLD_THRESHOLD: Duration = Duration::from_millis(350);
 #[derive(Default)]
 pub struct Hotkeys {
     manager: Mutex<Option<HotkeyManager>>,
-    ids: Mutex<HashMap<HotkeyId, Action>>,
+    ids: Mutex<HashMap<HotkeyId, (Action, Hotkey)>>,
     cancel_id: Mutex<Option<HotkeyId>>,
     cancel_active: AtomicBool,
     pressed_at: Mutex<HashMap<HotkeyId, Instant>>,
     suspended: AtomicBool,
     capture_session: Mutex<Option<String>>,
+    /// Im eigenen Fenster gedrückte Shortcuts (siehe `window_key`).
+    window_pressed: Mutex<HashSet<HotkeyId>>,
+}
+
+/// Welche Shortcuts ein Tastenereignis drückt oder loslässt, nach denselben
+/// Regeln wie der Hotkey-Manager von handy-keys.
+fn transitions<I: Copy + Eq + Hash>(
+    hotkeys: impl IntoIterator<Item = (I, Hotkey)>,
+    pressed: &mut HashSet<I>,
+    modifiers: Modifiers,
+    key: Option<Key>,
+    down: bool,
+) -> Vec<(I, HotkeyState)> {
+    hotkeys
+        .into_iter()
+        .filter_map(|(id, hk)| {
+            if down {
+                let hit = hk.modifiers.matches(modifiers) && hk.key == key;
+                (hit && pressed.insert(id)).then_some((id, HotkeyState::Pressed))
+            } else {
+                let gone = match key {
+                    Some(_) => hk.key == key,
+                    None => !hk.modifiers.matches(modifiers),
+                };
+                (gone && pressed.remove(&id)).then_some((id, HotkeyState::Released))
+            }
+        })
+        .collect()
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -71,13 +100,13 @@ impl Hotkeys {
             return errors;
         };
         let mut ids = self.ids.lock().unwrap();
-        for (id, action) in ids.iter() {
+        for (id, (action, _)) in ids.iter() {
             if *action != Action::Cancel {
                 let _ = manager.unregister(*id);
             }
         }
         // Die separate Escape-Registrierung einer laufenden Aufnahme behalten.
-        ids.retain(|_, action| *action == Action::Cancel);
+        ids.retain(|_, (action, _)| *action == Action::Cancel);
         // Während der Auswahl dürfen registrierte Kombis keine Eingabe blockieren.
         if self.suspended.load(Ordering::SeqCst) {
             if let Some(id) = self.cancel_id.lock().unwrap().take() {
@@ -97,10 +126,10 @@ impl Hotkeys {
                 continue;
             }
             match text.parse::<Hotkey>().map_err(|e| e.to_string()).and_then(|hk| {
-                manager.register(hk).map_err(|e| e.to_string())
+                manager.register(hk).map(|id| (id, hk)).map_err(|e| e.to_string())
             }) {
-                Ok(id) => {
-                    ids.insert(id, action);
+                Ok((id, hk)) => {
+                    ids.insert(id, (action, hk));
                 }
                 Err(message) => {
                     log::warn!("Shortcut {field} = {text:?} ungültig: {message}");
@@ -119,7 +148,7 @@ impl Hotkeys {
                 if let Ok(hk) = Hotkey::new(Modifiers::empty(), Key::Escape) {
                     if let Ok(id) = manager.register(hk) {
                         *cancel = Some(id);
-                        ids.insert(id, Action::Cancel);
+                        ids.insert(id, (Action::Cancel, hk));
                     }
                 }
             }
@@ -140,7 +169,7 @@ impl Hotkeys {
                 if let Ok(hk) = Hotkey::new(Modifiers::empty(), Key::Escape) {
                     if let Ok(id) = manager.register(hk) {
                         *cancel = Some(id);
-                        self.ids.lock().unwrap().insert(id, Action::Cancel);
+                        self.ids.lock().unwrap().insert(id, (Action::Cancel, hk));
                     }
                 }
             }
@@ -157,7 +186,7 @@ impl Hotkeys {
         if self.suspended.load(Ordering::SeqCst) {
             return;
         }
-        let Some(action) = self.ids.lock().unwrap().get(&id).copied() else { return };
+        let Some(action) = self.ids.lock().unwrap().get(&id).map(|(action, _)| *action) else { return };
         let st = state();
         let pressed = matches!(hk_state, HotkeyState::Pressed);
         match action {
@@ -212,6 +241,32 @@ impl Hotkeys {
         }
     }
 
+    /// Tasten aus dem eigenen Fenster: Hat dessen WebView den Fokus, ruft
+    /// Windows den Low-Level-Hook dieses Prozesses nicht auf. Die Oberfläche
+    /// meldet ihre Tasten deshalb selbst. Dort, wo der Hook greift, blockiert er
+    /// die Kombi, bevor die WebView sie sieht, also löst nichts doppelt aus.
+    pub fn window_key(&self, modifiers: Modifiers, key: Option<Key>, down: bool) {
+        if self.suspended.load(Ordering::SeqCst) {
+            return;
+        }
+        let events = {
+            let ids = self.ids.lock().unwrap();
+            let hotkeys = ids.iter().map(|(id, (_, hk))| (*id, *hk));
+            transitions(hotkeys, &mut self.window_pressed.lock().unwrap(), modifiers, key, down)
+        };
+        for (id, hk_state) in events {
+            self.dispatch(id, hk_state);
+        }
+    }
+
+    /// Das Fenster hat den Fokus verloren, bevor die Tasten losgelassen wurden.
+    pub fn window_blur(&self) {
+        let held: Vec<HotkeyId> = self.window_pressed.lock().unwrap().drain().collect();
+        for id in held {
+            self.dispatch(id, HotkeyState::Released);
+        }
+    }
+
     /// Die Oberfläche nimmt ihre eigenen Tastaturereignisse auf. Hier nur die
     /// globalen Aktionen pausieren, damit sie die Tasten nicht verschlucken.
     /// Kein zweiter, kurzlebiger Windows-Hook und keine Event-Listener-Rennen.
@@ -239,5 +294,46 @@ impl Hotkeys {
             self.suspended.store(false, Ordering::SeqCst);
             self.apply();
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn window_keys_match_like_the_hook() {
+        use HotkeyState::{Pressed, Released};
+        let hotkeys: Vec<(u32, Hotkey)> = [(1, "Ctrl+Shift+Space"), (2, "CtrlRight"), (3, "CtrlLeft+CmdLeft")]
+            .into_iter()
+            .map(|(id, text)| (id, text.parse().unwrap()))
+            .collect();
+        let mut pressed = HashSet::new();
+        let mut step = |mods: &str, key: Option<&str>, down: bool| {
+            let key = key.map(|k| k.parse().unwrap());
+            transitions(hotkeys.iter().copied(), &mut pressed, mods.parse().unwrap(), key, down)
+        };
+
+        // Strg+Umschalt+Leertaste, Leertaste zuerst losgelassen.
+        assert_eq!(step("CtrlLeft", None, true), vec![]);
+        assert_eq!(step("CtrlLeft+ShiftLeft", None, true), vec![]);
+        assert_eq!(step("CtrlLeft+ShiftLeft", Some("Space"), true), vec![(1, Pressed)]);
+        assert_eq!(step("CtrlLeft+ShiftLeft", Some("Space"), true), vec![], "Wiederholung");
+        assert_eq!(step("CtrlLeft+ShiftLeft", Some("Space"), false), vec![(1, Released)]);
+        assert_eq!(step("CtrlLeft", None, false), vec![]);
+        assert_eq!(step("", None, false), vec![]);
+
+        // Ohne Umschalt passt die Kombi nicht.
+        assert_eq!(step("CtrlLeft", Some("Space"), true), vec![]);
+        assert_eq!(step("CtrlLeft", Some("Space"), false), vec![]);
+        assert_eq!(step("", None, false), vec![]);
+
+        // Nur Modifier, seitengenau; losgelassen, sobald die Modifier nicht mehr passen.
+        assert_eq!(step("CtrlLeft", None, true), vec![]);
+        assert_eq!(step("CtrlLeft+CmdLeft", None, true), vec![(3, Pressed)]);
+        assert_eq!(step("CmdLeft", None, false), vec![(3, Released)]);
+        assert_eq!(step("", None, false), vec![]);
+        assert_eq!(step("CtrlRight", None, true), vec![(2, Pressed)]);
+        assert_eq!(step("", None, false), vec![(2, Released)]);
     }
 }

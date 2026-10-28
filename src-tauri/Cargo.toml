@@ -5,6 +5,7 @@ description = "Whisper Bird – lokales Diktieren, Verbessern und Transkribieren
 authors = ["Emil"]
 edition = "2021"
 default-run = "whisper-island"
+publish = false
 
 [lib]
 name = "whisper_island_lib"
@@ -46,6 +47,7 @@ transcribe-cpp = { version = "0.4.1", default-features = false, features = ["vul
 windows = { version = "0.62", features = [
   "Win32_Foundation",
   "Win32_Globalization",
+  "Win32_Graphics_Dwm",
   "Win32_Graphics_Gdi",
   "Win32_Media_Audio",
   "Win32_Media_Audio_Endpoints",

@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, FileText } from "lucide-react";
 import { api, type AppInfo } from "../lib/api";
 import { Card, Row, useApp } from "../lib/app";
 import type { TKey } from "../lib/i18n";
@@ -52,6 +52,11 @@ export default function Help() {
         </Row>
         <Row label={t("help.devices")} hint={info?.devices.join(", ") || "CPU"} />
         <Row label={t("help.credits")} hint={t("help.credits_text")} />
+        <Row label={t("help.notices")} hint={t("help.notices_hint")}>
+          <button type="button" className="btn small" onClick={() => api.openNotices()}>
+            <FileText size={14} /> {t("common.open")}
+          </button>
+        </Row>
       </Card>
     </>
   );

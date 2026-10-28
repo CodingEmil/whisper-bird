@@ -107,6 +107,7 @@ jobs:
           Copy-Item src-tauri\target\release\bundle\nsis\*.exe out\
           Copy-Item src-tauri\target\release\whisper-island.exe "portable\Whisper Bird.exe"
           Copy-Item src-tauri\redist\*.dll portable\
+          Copy-Item THIRD-PARTY-NOTICES.txt portable\
           Compress-Archive portable\* "out\Whisper-Bird_${version}_x64-portable.zip"
           Get-ChildItem out | Format-Table Name, Length
 

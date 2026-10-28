@@ -23,11 +23,9 @@ export default function Advanced() {
             onChange={(paste_method) => update({ paste_method })}
           />
         </Row>
-        {s.paste_method === "clipboard" && (
-          <Row label={t("adv.preserve")} hint={t("adv.preserve_hint")}>
-            <Toggle value={s.preserve_clipboard} onChange={(preserve_clipboard) => update({ preserve_clipboard })} />
-          </Row>
-        )}
+        <Row label={t("adv.copy")} hint={t("adv.copy_hint")}>
+          <Toggle value={s.copy_to_clipboard} onChange={(copy_to_clipboard) => update({ copy_to_clipboard })} />
+        </Row>
         <Row label={t("adv.trailing_space")}>
           <Toggle value={s.trailing_space} onChange={(trailing_space) => update({ trailing_space })} />
         </Row>

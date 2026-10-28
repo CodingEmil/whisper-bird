@@ -1,7 +1,7 @@
 import { createContext, Fragment, useCallback, useContext, useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import { api, formatShortcut, on, type Settings, type ShortcutError } from "./api";
-import { ShortcutCapture } from "./shortcut-capture";
+import { KeyTracker, ShortcutCapture } from "./shortcut-capture";
 import { translate, type TKey } from "./i18n";
 
 interface AppCtx {
@@ -284,6 +284,35 @@ export function ShortcutInput({ value, onChange, allowClear }: { value: string; 
       {error && <div className="row-hint error-text" role="alert">{error}</div>}
     </div>
   );
+}
+
+/**
+ * Hat die WebView den Fokus, ruft Windows den globalen Tastatur-Hook der App nicht auf.
+ * Das Fenster meldet seine Tasten deshalb selbst, der Abgleich läuft im Backend.
+ */
+export function useWindowShortcuts() {
+  useEffect(() => {
+    const keys = new KeyTracker();
+    // Der Reihe nach, damit ein kurzer Druck nicht als Loslassen vor dem Drücken ankommt.
+    let queue = Promise.resolve();
+    const send = (call: () => Promise<void>) => { queue = queue.then(call).catch(() => {}); };
+    const keyboard = (e: KeyboardEvent) => {
+      if (e.repeat || e.isComposing) return;
+      const down = e.type === "keydown";
+      const k = keys.handle(e, down);
+      if (k) send(() => api.windowKey(k.modifiers, k.key, down));
+    };
+    const blur = () => send(api.windowBlur);
+    window.addEventListener("keydown", keyboard, true);
+    window.addEventListener("keyup", keyboard, true);
+    window.addEventListener("blur", blur);
+    return () => {
+      window.removeEventListener("keydown", keyboard, true);
+      window.removeEventListener("keyup", keyboard, true);
+      window.removeEventListener("blur", blur);
+      blur();
+    };
+  }, []);
 }
 
 export function useEvent<T>(event: string, handler: (payload: T) => void, deps: unknown[] = []) {

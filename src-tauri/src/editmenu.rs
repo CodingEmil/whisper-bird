@@ -81,6 +81,11 @@ pub fn open() {
     let target = foreground::active_app();
     let selection = insert::capture_selection();
     let s = st.settings();
+    // Lokales Modell laden, während die Anweisung getippt oder gesprochen wird.
+    if st.enhancer.ready(&s).is_ok() {
+        let s = s.clone();
+        tauri::async_runtime::spawn(async move { state().enhancer.warm(&s).await });
+    }
     *st.editmenu.session.lock().unwrap() = Some(Session {
         target: target.clone(),
         selection: selection.clone(),
@@ -204,7 +209,8 @@ pub fn apply(text: String) -> Result<(), String> {
             &text,
             &InsertOptions {
                 method: s.paste_method,
-                preserve_clipboard: s.preserve_clipboard,
+                // Die Einstellung gilt fürs Diktat; hier gibt es den Kopieren-Knopf.
+                keep_in_clipboard: false,
                 auto_enter: false,
             },
         ) {

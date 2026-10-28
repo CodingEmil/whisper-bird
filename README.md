@@ -9,7 +9,7 @@ Rust-Backend (Tauri 2) mit React/TypeScript-Oberfläche.
 |---|---|
 | **Diktat** | Globaler Shortcut (Standard `Strg+Umschalt+Leertaste`), Umschalten / Push-to-talk / Hybrid, Text erscheint an der Cursorposition. Esc oder ✕ bricht ab. |
 | **Overlay** | Verschiebbares Floating Icon (Klick = Diktat, Rechtsklick = Menü, Dateien darauf ziehen = Transkription). Während der Aufnahme eine Pille mit Live-Waveform. Nimmt nie den Fokus. |
-| **Modelle** | Parakeet v3 (Standard), Qwen3-ASR 1.7B/0.6B, Canary 1B v2, Parakeet English, Whisper Tiny bis Large v3 – lokal über transcribe.cpp mit Vulkan-GPU. |
+| **Modelle** | Parakeet Ultra (Standard), Parakeet v3, Qwen3-ASR 1.7B/0.6B, Canary 1B v2, Parakeet English, Whisper Tiny bis Large v3 – lokal über transcribe.cpp mit Vulkan-GPU. |
 | **Enhance** | Grammatik, Zeichensetzung, Füllwörter, Selbstkorrekturen, app-gerechte Formatierung (E-Mail, Chat, Code …). Lokal mit Gemma 4 (llama.cpp), per CLI (Claude Code, Codex, Gemini) oder OpenAI-kompatibler API. Immer an oder über einen zweiten Shortcut. Fällt bei Fehlern auf den Rohtext zurück. |
 | **Text bearbeiten** | Markierten Text in jeder App per Shortcut verbessern, kürzen, erweitern, Ton ändern, als Liste formatieren, übersetzen – oder eigene Anweisung tippen bzw. sprechen. |
 | **Meetings** | Mikrofon und/oder PC-Audio (WASAPI-Loopback), Live-Transkript, danach Sprechererkennung (Sortformer), umbenennbare Sprecher, automatische Notizen, Export als PDF oder Text. |
@@ -85,3 +85,13 @@ Audioaufnahme, Hotkeys und Spracherkennung nutzen die MIT-lizenzierten Crates
 `handy-recorder`, `handy-keys` und `transcribe-cpp` aus dem
 [Handy](https://github.com/cjpais/Handy)-Projekt. Enhance läuft über
 [llama.cpp](https://github.com/ggml-org/llama.cpp).
+
+Die Lizenzen aller Modelle, Crates und npm-Pakete stehen in
+[`THIRD-PARTY-NOTICES.txt`](THIRD-PARTY-NOTICES.txt). Installer und portables Zip
+liefern die Datei mit, in der App öffnet sie Hilfe → Lizenzen Dritter. Nach neuen
+Abhängigkeiten oder Modellen neu erzeugen:
+
+```
+cargo install cargo-about --locked --features cli   # einmalig
+bun run notices
+```

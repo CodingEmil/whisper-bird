@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "playwright test",
     "tauri": "tauri",
-    "icons": "node scripts/make-icons.mjs && tauri icon src-tauri/icons/source.png"
+    "icons": "node scripts/make-icons.mjs && tauri icon src-tauri/icons/source.png",
+    "notices": "node scripts/notices.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.9.0",

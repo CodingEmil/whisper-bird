@@ -213,7 +213,7 @@ pub fn stop() {
     }
     let s = st.settings();
     if s.sounds {
-        sounds::play(sounds::Sound::Done, s.sound_volume);
+        sounds::play(sounds::Sound::Stop, s.sound_volume);
     }
 }
 

@@ -1,16 +1,57 @@
-import { useId } from "react";
+import { useEffect, useId, useState } from "react";
+import "./bird.css";
+
+/** Dauer der Putz-Animation, wie `.bird.preen` in bird.css. */
+const PREEN_MS = 1600;
+
+/** Alle paar Sekunden putzt sich der Vogel, in unregelmäßigen Abständen. */
+function usePreening(enabled: boolean) {
+  const [preening, setPreening] = useState(false);
+  useEffect(() => {
+    if (!enabled) return;
+    let timer: number;
+    const next = () => {
+      timer = window.setTimeout(() => {
+        setPreening(true);
+        timer = window.setTimeout(() => {
+          setPreening(false);
+          next();
+        }, PREEN_MS);
+      }, 6000 + Math.random() * 8000);
+    };
+    next();
+    return () => {
+      clearTimeout(timer);
+      setPreening(false);
+    };
+  }, [enabled]);
+  return preening;
+}
 
 /** Der Birdy-Eisvogel – dieselbe Grafik wie im Tray von Birdy Credit Status
  *  (Quelle: src/assets/birdy-kingfisher.svg). Der Schnabel ist hier in Ober-
  *  und Unterschnabel geteilt: `open` (0–1) öffnet ihn, so singt der Vogel in
- *  der Pille zur Stimme mit. Geschlossen ergibt sich exakt die Originalform. */
-export function Bird({ size = 24, open = 0, className = "" }: { size?: number; open?: number; className?: string }) {
+ *  der Pille zur Stimme mit. Geschlossen ergibt sich exakt die Originalform.
+ *  Die Klassen `upper` und `lower` lassen CSS-Animationen den Schnabel bewegen;
+ *  mit `preen` putzt er sich ab und zu. */
+export function Bird({
+  size = 24,
+  open = 0,
+  preen = false,
+  className = "",
+}: {
+  size?: number;
+  open?: number;
+  preen?: boolean;
+  className?: string;
+}) {
   // Eindeutige Verlaufs-IDs, falls mehrere Vögel im selben Dokument stehen.
   const id = useId().replace(/[^a-zA-Z0-9]/g, "");
   const ref = (name: string) => `url(#${id}${name})`;
-  const angle = Math.max(0, Math.min(1, open)) * 12;
+  const angle = Math.max(0, Math.min(1, open)) * 16;
+  const preening = usePreening(preen);
   return (
-    <svg className={`bird ${className}`} width={size} height={size} viewBox="0 0 256 256" aria-hidden="true">
+    <svg className={`bird ${preening ? "preen" : ""} ${className}`} width={size} height={size} viewBox="0 0 256 256" aria-hidden="true">
       <defs>
         <linearGradient id={`${id}crown`} x1="96" y1="30" x2="173" y2="166" gradientUnits="userSpaceOnUse">
           <stop stopColor="#47CEC9" />
@@ -42,8 +83,8 @@ export function Bird({ size = 24, open = 0, className = "" }: { size?: number; o
         strokeLinejoin="round"
       />
       {/* Schnabel, Gelenk im Mundwinkel (173|72); die Basis liegt unter dem Kopf. */}
-      <path className="mandible" fill={ref("bill")} d="M173 62L246 74L173 72Z" style={{ transform: `rotate(${-angle}deg)`, transformOrigin: "173px 72px" }} />
-      <path className="mandible" fill={ref("bill")} d="M173 72L246 74L173 82Z" style={{ transform: `rotate(${angle}deg)`, transformOrigin: "173px 72px" }} />
+      <path className="mandible upper" fill={ref("bill")} d="M173 62L246 74L173 72Z" style={{ transform: `rotate(${-angle}deg)`, transformOrigin: "173px 72px" }} />
+      <path className="mandible lower" fill={ref("bill")} d="M173 72L246 74L173 82Z" style={{ transform: `rotate(${angle}deg)`, transformOrigin: "173px 72px" }} />
       <path
         fill={ref("crown")}
         d="M34 197C43 158 63 114 87 86C85 70 89 50 104 38C120 27 143 27 160 35C177 43 183 60 177 77L169 92C179 108 177 134 164 158C146 193 124 213 99 211C73 211 49 198 34 197Z"

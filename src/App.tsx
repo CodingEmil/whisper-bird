@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState, type ComponentType } from "react";
+import { useEffect, useState, type ComponentType } from "react";
 import {
   BookText,
   Boxes,
@@ -16,7 +16,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { api, on } from "./lib/api";
-import { useApp } from "./lib/app";
+import { useApp, useWindowShortcuts } from "./lib/app";
 import type { TKey } from "./lib/i18n";
 import Home from "./pages/Home";
 import Dictation from "./pages/Dictation";
@@ -54,30 +54,54 @@ interface PageDef {
   key: TKey;
   icon: LucideIcon;
   comp: ComponentType<{ navigate: (p: PageId) => void }>;
-  sepBefore?: boolean;
 }
 
-const PAGES: PageDef[] = [
-  { id: "home", key: "nav.home", icon: House, comp: Home },
-  { id: "dictation", key: "nav.dictation", icon: Mic, comp: Dictation, sepBefore: true },
-  { id: "models", key: "nav.models", icon: Boxes, comp: Models },
-  { id: "shortcuts", key: "nav.shortcuts", icon: Keyboard, comp: Shortcuts },
-  { id: "enhance", key: "nav.enhance", icon: Sparkles, comp: Enhance },
-  { id: "edit", key: "nav.edit", icon: PenLine, comp: EditText },
-  { id: "words", key: "nav.words", icon: BookText, comp: Words },
-  { id: "meetings", key: "nav.meetings", icon: Users, comp: Meetings, sepBefore: true },
-  { id: "files", key: "nav.files", icon: FileAudio, comp: Files },
-  { id: "history", key: "nav.history", icon: HistoryIcon, comp: History },
-  { id: "stats", key: "nav.stats", icon: ChartColumn, comp: Stats },
-  { id: "advanced", key: "nav.advanced", icon: SlidersHorizontal, comp: Advanced, sepBefore: true },
-  { id: "help", key: "nav.help", icon: CircleHelp, comp: Help },
+interface NavGroup {
+  heading?: TKey;
+  /** Steht am Fuß der Seitenleiste. */
+  foot?: boolean;
+  pages: PageDef[];
+}
+
+const NAV: NavGroup[] = [
+  { pages: [{ id: "home", key: "nav.home", icon: House, comp: Home }] },
+  {
+    heading: "nav.group_dictate",
+    pages: [
+      { id: "dictation", key: "nav.dictation", icon: Mic, comp: Dictation },
+      { id: "models", key: "nav.models", icon: Boxes, comp: Models },
+      { id: "shortcuts", key: "nav.shortcuts", icon: Keyboard, comp: Shortcuts },
+      { id: "enhance", key: "nav.enhance", icon: Sparkles, comp: Enhance },
+      { id: "edit", key: "nav.edit", icon: PenLine, comp: EditText },
+      { id: "words", key: "nav.words", icon: BookText, comp: Words },
+    ],
+  },
+  {
+    heading: "nav.group_recordings",
+    pages: [
+      { id: "meetings", key: "nav.meetings", icon: Users, comp: Meetings },
+      { id: "files", key: "nav.files", icon: FileAudio, comp: Files },
+      { id: "history", key: "nav.history", icon: HistoryIcon, comp: History },
+      { id: "stats", key: "nav.stats", icon: ChartColumn, comp: Stats },
+    ],
+  },
+  {
+    foot: true,
+    pages: [
+      { id: "advanced", key: "nav.advanced", icon: SlidersHorizontal, comp: Advanced },
+      { id: "help", key: "nav.help", icon: CircleHelp, comp: Help },
+    ],
+  },
 ];
+
+const PAGES = NAV.flatMap((g) => g.pages);
 
 export default function App() {
   const { t, settings } = useApp();
   const [page, setPage] = useState<PageId>("home");
   const [onboarding, setOnboarding] = useState(!settings.onboarding_done);
   const [meetingActive, setMeetingActive] = useState(false);
+  useWindowShortcuts();
 
   useEffect(() => {
     document.documentElement.lang = settings.ui_language;
@@ -112,25 +136,37 @@ export default function App() {
             <div className="brand-sub">lokal auf Windows</div>
           </div>
         </div>
-        {PAGES.map((p) => {
-          const Icon = p.icon;
-          return (
-            <Fragment key={p.id}>
-              {p.sepBefore && <div className="nav-sep" />}
-              <button
-                type="button"
-                className="nav-item"
-                aria-current={p.id === page ? "page" : undefined}
-                title={t(p.key)}
-                onClick={() => setPage(p.id)}
-              >
-                <Icon size={18} />
-                <span className="nav-label">{t(p.key)}</span>
-                {p.id === "meetings" && meetingActive && <span className="nav-badge">{t("meet.recording")}</span>}
-              </button>
-            </Fragment>
-          );
-        })}
+        {NAV.map((g, i) => (
+          <div
+            key={i}
+            className={`nav-group${g.foot ? " foot" : ""}`}
+            role={g.heading ? "group" : undefined}
+            aria-labelledby={g.heading ? `nav-heading-${i}` : undefined}
+          >
+            {g.heading && (
+              <div className="nav-heading" id={`nav-heading-${i}`}>
+                {t(g.heading)}
+              </div>
+            )}
+            {g.pages.map((p) => {
+              const Icon = p.icon;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  className="nav-item"
+                  aria-current={p.id === page ? "page" : undefined}
+                  title={t(p.key)}
+                  onClick={() => setPage(p.id)}
+                >
+                  <Icon size={18} />
+                  <span className="nav-label">{t(p.key)}</span>
+                  {p.id === "meetings" && meetingActive && <span className="nav-badge">{t("meet.recording")}</span>}
+                </button>
+              );
+            })}
+          </div>
+        ))}
       </nav>
       <main className="content">
         <div className="page" key={current.id}>

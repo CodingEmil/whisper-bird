@@ -1,5 +1,6 @@
 //! Text an der Cursorposition der aktiven App einfügen und markierten Text
-//! auslesen – jeweils ohne die Zwischenablage des Nutzers zu verlieren.
+//! auslesen – ohne die Zwischenablage des Nutzers zu verlieren, außer der
+//! Text soll dort bleiben.
 
 use crate::settings::PasteMethod;
 use crate::win::{clipboard, input};
@@ -7,7 +8,8 @@ use std::time::{Duration, Instant};
 
 pub struct InsertOptions {
     pub method: PasteMethod,
-    pub preserve_clipboard: bool,
+    /// Text bleibt danach in der Zwischenablage; sonst kommt der vorherige Inhalt zurück.
+    pub keep_in_clipboard: bool,
     pub auto_enter: bool,
 }
 
@@ -21,10 +23,15 @@ pub fn insert_text(text: &str, opts: &InsertOptions) -> anyhow::Result<()> {
     }
     input::wait_modifiers_released(Duration::from_millis(1200));
     match opts.method {
-        PasteMethod::Type => input::type_text(text),
+        PasteMethod::Type => {
+            input::type_text(text);
+            if opts.keep_in_clipboard {
+                clipboard::set_text(text, false)?;
+            }
+        }
         PasteMethod::Clipboard => {
-            let snapshot = opts.preserve_clipboard.then(clipboard::snapshot);
-            clipboard::set_text(text, opts.preserve_clipboard)?;
+            let snapshot = (!opts.keep_in_clipboard).then(clipboard::snapshot);
+            clipboard::set_text(text, !opts.keep_in_clipboard)?;
             std::thread::sleep(Duration::from_millis(25));
             input::paste();
             if let Some(snapshot) = snapshot {
@@ -38,7 +45,7 @@ pub fn insert_text(text: &str, opts: &InsertOptions) -> anyhow::Result<()> {
         }
     }
     if opts.auto_enter {
-        std::thread::sleep(Duration::from_millis(if opts.preserve_clipboard { 30 } else { 120 }));
+        std::thread::sleep(Duration::from_millis(if opts.keep_in_clipboard { 120 } else { 30 }));
         input::enter();
     }
     Ok(())

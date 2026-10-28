@@ -37,10 +37,16 @@ pub fn show_main_window(page: Option<&str>) {
                 .inner_size(1100.0, 740.0)
                 .min_inner_size(900.0, 600.0)
                 .center()
-                .visible(true)
+                .theme(Some(tauri::Theme::Dark))
+                // Erst nach dem Einfärben der Titelleiste zeigen (show() unten).
+                .visible(false)
                 .build()
             {
-                Ok(w) => w,
+                Ok(w) => {
+                    #[cfg(windows)]
+                    style_title_bar(&w);
+                    w
+                }
                 Err(e) => {
                     log::error!("Hauptfenster konnte nicht erstellt werden: {e}");
                     return;
@@ -54,6 +60,27 @@ pub fn show_main_window(page: Option<&str>) {
             let _ = window.emit_to(MAIN_LABEL, "navigate", page);
         }
     });
+}
+
+/// Titelleiste in den Farben der Seitenleiste (--color-chrome, Schrift --color-ink).
+/// Windows 11 übernimmt die Farben, Windows 10 zeigt über Theme::Dark die dunkle Leiste.
+#[cfg(windows)]
+fn style_title_bar(window: &tauri::WebviewWindow) {
+    use windows::Win32::Foundation::{COLORREF, HWND};
+    use windows::Win32::Graphics::Dwm::{DwmSetWindowAttribute, DWMWA_CAPTION_COLOR, DWMWA_TEXT_COLOR};
+    let Ok(h) = window.hwnd() else { return };
+    // COLORREF ist 0x00BBGGRR.
+    let rgb = |r: u32, g: u32, b: u32| COLORREF(r | g << 8 | b << 16);
+    for (attr, color) in [(DWMWA_CAPTION_COLOR, rgb(20, 34, 39)), (DWMWA_TEXT_COLOR, rgb(241, 236, 227))] {
+        unsafe {
+            let _ = DwmSetWindowAttribute(
+                HWND(h.0 as *mut _),
+                attr,
+                &color as *const COLORREF as *const _,
+                std::mem::size_of::<COLORREF>() as u32,
+            );
+        }
+    }
 }
 
 fn background_tasks() {
@@ -82,7 +109,11 @@ fn background_tasks() {
         {
             st.asr.unload();
         }
-        if !s.enhance_keep_loaded && st.enhancer.llama.is_running() && st.enhancer.llama.idle_secs() > 120 {
+        if s.enhance_unload_after_min > 0
+            && st.enhancer.llama.is_running()
+            && !st.dictation.is_busy()
+            && st.enhancer.llama.idle_secs() > s.enhance_unload_after_min as u64 * 60
+        {
             st.enhancer.llama.stop();
         }
     });
@@ -134,6 +165,8 @@ pub fn run() {
             commands::play_test_sound,
             commands::start_shortcut_capture,
             commands::stop_shortcut_capture,
+            commands::window_key,
+            commands::window_blur,
             commands::dictation_toggle,
             commands::dictation_cancel,
             commands::overlay_context_menu,
@@ -169,6 +202,7 @@ pub fn run() {
             commands::save_text_file,
             commands::finish_onboarding,
             commands::open_data_dir,
+            commands::open_notices,
         ])
         .setup(|app| {
             let handle = app.handle().clone();

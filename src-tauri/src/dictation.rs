@@ -205,6 +205,10 @@ impl Dictation {
                 let cancel = CancelToken::new();
                 *phase = Phase::Processing { cancel: cancel.clone() };
                 drop(phase);
+                let s = state().settings();
+                if s.sounds {
+                    sounds::play(Sound::Stop, s.sound_volume);
+                }
                 ducking::restore();
                 std::thread::spawn(move || {
                     let result = process(rec, started, mode, app, &cancel);
@@ -300,6 +304,7 @@ fn process(
 ) -> anyhow::Result<()> {
     let st = state();
     let s = st.settings();
+    let processing = Instant::now();
     let samples = rec.stop()?;
     let duration_ms = started.elapsed().as_millis() as i64;
     let peak = samples.iter().fold(0.0f32, |m, v| m.max(v.abs()));
@@ -406,7 +411,7 @@ fn process(
         &to_insert,
         &InsertOptions {
             method: s.paste_method,
-            preserve_clipboard: s.preserve_clipboard,
+            keep_in_clipboard: s.copy_to_clipboard,
             auto_enter,
         },
     )
@@ -438,7 +443,8 @@ fn process(
         overlay::set(OverlayPhase::Warning, Some(w), false, None);
         schedule_idle(3500);
     } else {
-        if s.sounds {
+        // Der Stopp-Pfiff kam schon; der Triller meldet nur längeres Warten (z. B. Enhance).
+        if s.sounds && processing.elapsed() >= Duration::from_millis(1500) {
             sounds::play(Sound::Done, s.sound_volume);
         }
         overlay::set(OverlayPhase::Done, None, enhance, None);

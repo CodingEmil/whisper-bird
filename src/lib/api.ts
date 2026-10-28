@@ -41,7 +41,7 @@ export interface Settings {
   audio_ducking: boolean;
   ducking_level: number;
   paste_method: PasteMethod;
-  preserve_clipboard: boolean;
+  copy_to_clipboard: boolean;
   trailing_space: boolean;
   auto_enter_apps: string[];
   custom_words: string[];
@@ -50,7 +50,7 @@ export interface Settings {
   enhance_mode: EnhanceMode;
   enhance_provider: EnhanceProvider;
   enhance_local_model: string;
-  enhance_keep_loaded: boolean;
+  enhance_unload_after_min: number;
   enhance_cli_preset: string;
   enhance_cli_command: string;
   enhance_api_base_url: string;
@@ -217,6 +217,8 @@ export const api = {
   playTestSound: () => invoke<void>("play_test_sound"),
   startShortcutCapture: (session: string) => invoke<void>("start_shortcut_capture", { session }),
   stopShortcutCapture: (session: string) => invoke<void>("stop_shortcut_capture", { session }),
+  windowKey: (modifiers: string, key: string | null, down: boolean) => invoke<void>("window_key", { modifiers, key, down }),
+  windowBlur: () => invoke<void>("window_blur"),
   dictationToggle: (enhance = false) => invoke<void>("dictation_toggle", { enhance }),
   dictationCancel: () => invoke<void>("dictation_cancel"),
   overlayContextMenu: () => invoke<void>("overlay_context_menu"),
@@ -253,6 +255,7 @@ export const api = {
   saveTextFile: (path: string, content: string) => invoke<void>("save_text_file", { path, content }),
   finishOnboarding: () => invoke<void>("finish_onboarding"),
   openDataDir: (which: "data" | "logs" | "models" | "meetings") => invoke<void>("open_data_dir", { which }),
+  openNotices: () => invoke<void>("open_notices"),
 };
 
 export function on<T>(event: string, handler: (payload: T) => void): () => void {

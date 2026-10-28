@@ -92,8 +92,28 @@ input[type="date"],
   color: var(--color-muted);
 }
 
-.nav-sep {
-  height: var(--space-sm);
+.nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xs);
+}
+.nav-group + .nav-group {
+  margin-top: var(--space-sm);
+}
+/* Wie überall in der App trägt eine Gruppe eine Überschrift, hier klein und gedämpft. */
+.nav-heading {
+  padding: 0 var(--space-sm) var(--space-3xs);
+  font: var(--weight-strong) var(--text-xs) / 1.4 var(--font-body);
+  color: var(--color-muted);
+}
+/* Einstellungen und Hilfe stehen am Fuß, über einer Haarlinie. */
+.nav-group.foot {
+  margin-top: auto;
+  padding-top: var(--space-xs);
+  border-top: var(--rule-hair) solid var(--color-rule);
+}
+.nav-group:has(+ .foot) {
+  margin-bottom: var(--space-sm);
 }
 
 .nav-item {
@@ -183,13 +203,19 @@ input[type="date"],
     padding-inline: 0;
   }
   .brand > div,
-  .nav-label {
+  .nav-label,
+  .nav-heading {
     position: absolute;
     width: 1px;
     height: 1px;
     overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;
+  }
+  /* Ohne sichtbare Überschrift trennt eine Haarlinie die Gruppen. */
+  .nav-group + .nav-group {
+    padding-top: var(--space-sm);
+    border-top: var(--rule-hair) solid var(--color-rule);
   }
   .nav-item {
     justify-content: center;

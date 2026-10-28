@@ -1,5 +1,6 @@
-//! Kurze Hinweistöne (Start-Zwitschern, Fertig, Fehler), synthetisch erzeugt
-//! und über PlaySound aus dem Speicher abgespielt – keine Audiodateien nötig.
+//! Kurze Hinweistöne (Start- und Stopp-Zwitschern, Fertig-Triller, Fehler),
+//! synthetisch erzeugt und über PlaySound aus dem Speicher abgespielt – keine
+//! Audiodateien nötig.
 
 use std::collections::HashMap;
 use std::f32::consts::TAU;
@@ -8,6 +9,7 @@ use std::sync::Mutex;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Sound {
     Start,
+    Stop,
     Done,
     Error,
 }
@@ -35,12 +37,22 @@ const fn chirp(from: f32, to: f32, ms: u32) -> Segment {
 
 /// Ganz kurzes Zwitschern: ein steigender und ein fallender Pfiff.
 const START: &[Segment] = &[chirp(3400.0, 5400.0, 40), tone(0.0, 30), chirp(5800.0, 3800.0, 55)];
-const DONE: &[Segment] = &[tone(1046.5, 70), tone(784.0, 120)];
+/// Gegenstück zum Start: zwei fallende Pfiffe, der zweite tiefer – das Mikro ist zu.
+const STOP: &[Segment] = &[chirp(5000.0, 3400.0, 45), tone(0.0, 30), chirp(4200.0, 2800.0, 70)];
+/// Aufsteigender Triller: Text ist da.
+const DONE: &[Segment] = &[
+    chirp(3200.0, 3800.0, 28),
+    tone(0.0, 18),
+    chirp(3600.0, 4300.0, 28),
+    tone(0.0, 18),
+    chirp(4000.0, 5000.0, 50),
+];
 const ERROR: &[Segment] = &[tone(330.0, 120), tone(0.0, 40), tone(262.0, 180)];
 
 fn segments(sound: Sound) -> &'static [Segment] {
     match sound {
         Sound::Start => START,
+        Sound::Stop => STOP,
         Sound::Done => DONE,
         Sound::Error => ERROR,
     }
@@ -124,11 +136,13 @@ mod tests {
 
     #[test]
     fn zwitschern_ist_kurz_und_uebersteuert_nicht() {
-        let wav = synth(Sound::Start, 1.0);
-        assert_eq!(&wav[..4], b"RIFF");
-        let samples: Vec<i16> = wav[44..].chunks(2).map(|b| i16::from_le_bytes([b[0], b[1]])).collect();
-        assert!(samples.len() <= 44_100 * 150 / 1000, "länger als 150 ms");
-        let peak = samples.iter().map(|s| s.unsigned_abs()).max().unwrap();
-        assert!(peak > 1000 && peak < i16::MAX as u16, "Spitze {peak}");
+        for sound in [Sound::Start, Sound::Stop, Sound::Done] {
+            let wav = synth(sound, 1.0);
+            assert_eq!(&wav[..4], b"RIFF");
+            let samples: Vec<i16> = wav[44..].chunks(2).map(|b| i16::from_le_bytes([b[0], b[1]])).collect();
+            assert!(samples.len() <= 44_100 * 150 / 1000, "{sound:?} länger als 150 ms");
+            let peak = samples.iter().map(|s| s.unsigned_abs()).max().unwrap();
+            assert!(peak > 1000 && peak < i16::MAX as u16, "{sound:?} Spitze {peak}");
+        }
     }
 }

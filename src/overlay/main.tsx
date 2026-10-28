@@ -29,6 +29,45 @@ function Waveform({ levels }: { levels: number[] }) {
   );
 }
 
+/** Dauer der Drehung beim Einsetzen der Stimme, wie `.bird.turn`. */
+const TURN_MS = 450;
+
+/** Der Vogel spricht mit: Der Schnabel folgt den Silben, der Kopf hebt sich mit
+ *  der Lautstärke, und setzt die Stimme nach einer Pause ein, dreht er sich kurz zu dir. */
+function TalkingBird({ level }: { level: number }) {
+  // Pegel: Stille um 0–0,1, Sprache etwa 0,35–0,9 (audio::level).
+  const open = Math.max(0, Math.min(1, (level - 0.3) / 0.45));
+  const [turn, setTurn] = useState(false);
+  const quietSince = useRef<number | null>(Date.now());
+  const lastTurn = useRef(0);
+
+  useEffect(() => {
+    const now = Date.now();
+    if (level < 0.3) {
+      if (quietSince.current === null) quietSince.current = now;
+    } else if (level > 0.45) {
+      const quiet = quietSince.current;
+      quietSince.current = null;
+      if (quiet !== null && now - quiet > 600 && now - lastTurn.current > 2500) {
+        lastTurn.current = now;
+        setTurn(true);
+      }
+    }
+  }, [level]);
+
+  useEffect(() => {
+    if (!turn) return;
+    const id = setTimeout(() => setTurn(false), TURN_MS);
+    return () => clearTimeout(id);
+  }, [turn]);
+
+  return (
+    <span className="bird-talk" style={{ transform: `rotate(${-open * 6}deg)` }}>
+      <Bird size={30} open={open} className={turn ? "turn" : ""} />
+    </span>
+  );
+}
+
 function IdleIcon({ drop }: { drop: boolean }) {
   const down = useRef<{ x: number; y: number } | null>(null);
   return (
@@ -55,7 +94,7 @@ function IdleIcon({ drop }: { drop: boolean }) {
         api.overlayContextMenu();
       }}
     >
-      {drop ? <Plus size={22} /> : <Bird size={34} />}
+      {drop ? <Plus size={22} /> : <Bird size={34} preen />}
     </div>
   );
 }
@@ -114,8 +153,7 @@ function Overlay() {
     >
       {state.phase === "recording" && (
         <>
-          {/* Der Vogel singt mit: Der Schnabel folgt dem aktuellen Pegel. */}
-          <Bird size={30} open={levels[levels.length - 1] * 1.6} />
+          <TalkingBird level={levels[levels.length - 1]} />
           {state.enhance && <Sparkles size={14} className="enh" />}
           <Waveform levels={levels} />
           <span className="timer">{timer}</span>

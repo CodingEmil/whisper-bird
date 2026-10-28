@@ -108,7 +108,11 @@ pub struct Settings {
 
     // Einfügen
     pub paste_method: PasteMethod,
-    pub preserve_clipboard: bool,
+    /// Diktat bleibt nach dem Einfügen in der Zwischenablage; sonst kommt der alte Inhalt zurück.
+    pub copy_to_clipboard: bool,
+    /// Frühere Einstellung „Zwischenablage erhalten“ (umgekehrt), nur noch beim Laden übernommen.
+    #[serde(skip_serializing)]
+    preserve_clipboard: Option<bool>,
     pub trailing_space: bool,
     pub auto_enter_apps: Vec<String>,
 
@@ -121,7 +125,11 @@ pub struct Settings {
     pub enhance_mode: EnhanceMode,
     pub enhance_provider: EnhanceProvider,
     pub enhance_local_model: String,
-    pub enhance_keep_loaded: bool,
+    /// Lokales Enhance-Modell nach so vielen Minuten Leerlauf entladen; 0 = nie.
+    pub enhance_unload_after_min: u32,
+    /// Frühere Einstellung „Modell geladen halten“, nur noch beim Laden übernommen.
+    #[serde(skip_serializing)]
+    enhance_keep_loaded: Option<bool>,
     pub enhance_cli_preset: String,
     pub enhance_cli_command: String,
     pub enhance_api_base_url: String,
@@ -148,7 +156,7 @@ pub struct Settings {
     pub debug_logging: bool,
 }
 
-pub const DEFAULT_ASR_MODEL: &str = "parakeet-tdt-0.6b-v3";
+pub const DEFAULT_ASR_MODEL: &str = "parakeet-ultra";
 pub const DEFAULT_LLM_MODEL: &str = "gemma-4-e4b";
 
 pub fn default_edit_actions(lang: &str) -> Vec<EditAction> {
@@ -245,7 +253,8 @@ impl Default for Settings {
             ducking_level: 0.3,
 
             paste_method: PasteMethod::Clipboard,
-            preserve_clipboard: true,
+            copy_to_clipboard: false,
+            preserve_clipboard: None,
             trailing_space: true,
             auto_enter_apps: Vec::new(),
 
@@ -256,7 +265,8 @@ impl Default for Settings {
             enhance_mode: EnhanceMode::Off,
             enhance_provider: EnhanceProvider::Local,
             enhance_local_model: DEFAULT_LLM_MODEL.into(),
-            enhance_keep_loaded: true,
+            enhance_unload_after_min: 5,
+            enhance_keep_loaded: None,
             enhance_cli_preset: "claude".into(),
             enhance_cli_command: crate::enhance::cli::preset_command("claude").into(),
             enhance_api_base_url: "http://localhost:11434/v1".into(),
@@ -293,12 +303,26 @@ fn system_ui_language() -> String {
 
 pub fn load(path: &Path) -> Settings {
     match std::fs::read_to_string(path) {
-        Ok(text) => serde_json::from_str(&text).unwrap_or_else(|e| {
-            log::warn!("Einstellungen unlesbar ({e}), verwende Standardwerte");
-            Settings::default()
-        }),
+        Ok(text) => parse(&text),
         Err(_) => Settings::default(),
     }
+}
+
+fn parse(text: &str) -> Settings {
+    let mut settings: Settings = serde_json::from_str(text).unwrap_or_else(|e| {
+        log::warn!("Einstellungen unlesbar ({e}), verwende Standardwerte");
+        Settings::default()
+    });
+    // „Zwischenablage erhalten: aus“ hieß: Das Diktat bleibt in der Zwischenablage.
+    if let Some(preserve) = settings.preserve_clipboard.take() {
+        settings.copy_to_clipboard = !preserve;
+    }
+    // „Modell geladen halten: aus“ hieß: nach zwei Minuten entladen. „An“ war der
+    // Standard und hielt Gemma dauerhaft im Grafikspeicher; dafür gilt jetzt der neue Standard.
+    if settings.enhance_keep_loaded.take() == Some(false) {
+        settings.enhance_unload_after_min = 2;
+    }
+    settings
 }
 
 pub fn save(path: &Path, settings: &Settings) -> anyhow::Result<()> {
@@ -306,4 +330,29 @@ pub fn save(path: &Path, settings: &Settings) -> anyhow::Result<()> {
     std::fs::write(&tmp, serde_json::to_vec_pretty(settings)?)?;
     std::fs::rename(&tmp, path)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn alte_zwischenablage_einstellung_wird_uebernommen() {
+        assert!(parse(r#"{"preserve_clipboard": false}"#).copy_to_clipboard);
+        assert!(!parse(r#"{"preserve_clipboard": true}"#).copy_to_clipboard);
+        assert!(!parse("{}").copy_to_clipboard);
+        let json = serde_json::to_string(&parse(r#"{"preserve_clipboard": false}"#)).unwrap();
+        assert!(!json.contains("preserve_clipboard"));
+        assert!(json.contains(r#""copy_to_clipboard":true"#));
+    }
+
+    #[test]
+    fn enhance_modell_wird_nicht_mehr_dauerhaft_gehalten() {
+        assert_eq!(parse(r#"{"enhance_keep_loaded": false}"#).enhance_unload_after_min, 2);
+        assert_eq!(parse(r#"{"enhance_keep_loaded": true}"#).enhance_unload_after_min, 5);
+        assert_eq!(parse("{}").enhance_unload_after_min, 5);
+        assert_eq!(parse(r#"{"enhance_unload_after_min": 0}"#).enhance_unload_after_min, 0);
+        let json = serde_json::to_string(&parse(r#"{"enhance_keep_loaded": false}"#)).unwrap();
+        assert!(!json.contains("enhance_keep_loaded"));
+    }
 }

@@ -66,10 +66,27 @@ const WHISPER: &[&str] = &[
 
 pub static MODELS: &[ModelInfo] = &[
     ModelInfo {
+        id: "parakeet-ultra",
+        name: "Parakeet Ultra",
+        description_de: "Der schnelle Standard. 25 europäische Sprachen, genauer als Parakeet v3.",
+        description_en: "The fast default. 25 European languages, more accurate than Parakeet v3.",
+        kind: ModelKind::Asr,
+        family: "parakeet",
+        repo: "handy-computer/parakeet-ultra-gguf",
+        revision: "a1539be1b849ea7463b88343e5277b373d0c4ea9",
+        filename: "parakeet-ultra-Q8_0.gguf",
+        size: 740_363_168,
+        sha256: "007a59761e9258779f189df396b50d12b83bb5b79e66df4b955c230d2f2a0a59",
+        languages: EU25,
+        speed: 5,
+        accuracy: 5,
+        recommended: true,
+    },
+    ModelInfo {
         id: "parakeet-tdt-0.6b-v3",
         name: "Parakeet v3",
-        description_de: "Der schnelle Standard. 25 europäische Sprachen, sehr genau.",
-        description_en: "The fast default. 25 European languages, very accurate.",
+        description_de: "Der Vorgänger von Parakeet Ultra. 25 europäische Sprachen.",
+        description_en: "The predecessor of Parakeet Ultra. 25 European languages.",
         kind: ModelKind::Asr,
         family: "parakeet",
         repo: "handy-computer/parakeet-tdt-0.6b-v3-gguf",
@@ -80,7 +97,7 @@ pub static MODELS: &[ModelInfo] = &[
         languages: EU25,
         speed: 5,
         accuracy: 4,
-        recommended: true,
+        recommended: false,
     },
     ModelInfo {
         id: "Qwen3-ASR-1.7B",
