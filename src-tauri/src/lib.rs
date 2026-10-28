@@ -185,6 +185,18 @@ pub fn run() {
             log::set_max_level(if s.debug_logging { log::LevelFilter::Debug } else { log::LevelFilter::Info });
             log::info!("Whisper Bird {} startet", env!("CARGO_PKG_VERSION"));
 
+            // Maßgeblich ist Windows: Installer und Task-Manager ändern den Autostart an der App vorbei.
+            {
+                use tauri_plugin_autostart::ManagerExt;
+                match app.autolaunch().is_enabled() {
+                    Ok(enabled) if enabled != s.autostart => {
+                        st.update_settings(|s| s.autostart = enabled);
+                    }
+                    Ok(_) => {}
+                    Err(e) => log::warn!("Autostart-Status nicht lesbar: {e}"),
+                }
+            }
+
             overlay::create(&handle)?;
             editmenu::create(&handle)?;
             tray::create(&handle)?;

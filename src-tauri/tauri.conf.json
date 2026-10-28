@@ -30,6 +30,7 @@
     "windows": {
       "nsis": {
         "installMode": "currentUser",
+        "template": "windows/installer.nsi",
         "languages": ["German", "English"],
         "displayLanguageSelector": false
       }
