@@ -200,7 +200,7 @@ fn free_port() -> anyhow::Result<u16> {
 
 #[cfg(windows)]
 mod job {
-    //! Job-Objekt: Stirbt Whisper Island, beendet Windows auch den llama-server.
+    //! Job-Objekt: Stirbt Whisper Bird, beendet Windows auch den llama-server.
     use std::os::windows::io::AsRawHandle;
     use windows::Win32::Foundation::{CloseHandle, HANDLE};
     use windows::Win32::System::JobObjects::{

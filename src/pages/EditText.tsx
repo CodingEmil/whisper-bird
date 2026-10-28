@@ -14,10 +14,10 @@ export default function EditText() {
     <>
       <header className="page-header">
         <h1 className="page-title">{t("edit.title")}</h1>
-        <p className="page-sub">
-          <WithShortcut text={t("edit.subtitle")} shortcut={s.shortcut_edit} />
-        </p>
       </header>
+      <p className="page-sub">
+        <WithShortcut text={t("edit.subtitle")} shortcut={s.shortcut_edit} />
+      </p>
 
       <div className="notice" style={{ marginBottom: 16 }}>
         {t("edit.needs_enhance")}

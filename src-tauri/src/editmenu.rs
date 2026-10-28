@@ -36,7 +36,7 @@ struct OpenPayload {
 
 pub fn create(app: &AppHandle) -> tauri::Result<()> {
     let window = WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App("editmenu.html".into()))
-        .title("Whisper Island – Text bearbeiten")
+        .title("Whisper Bird – Text bearbeiten")
         .inner_size(WIDTH, HEIGHT)
         .resizable(false)
         .maximizable(false)

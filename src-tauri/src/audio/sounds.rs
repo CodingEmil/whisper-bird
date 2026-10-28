@@ -1,7 +1,8 @@
-//! Kurze Hinweistöne (Start, Fertig, Fehler), synthetisch erzeugt und über
-//! PlaySound aus dem Speicher abgespielt – keine Audiodateien nötig.
+//! Kurze Hinweistöne (Start-Zwitschern, Fertig, Fehler), synthetisch erzeugt
+//! und über PlaySound aus dem Speicher abgespielt – keine Audiodateien nötig.
 
 use std::collections::HashMap;
+use std::f32::consts::TAU;
 use std::sync::Mutex;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -11,29 +12,60 @@ pub enum Sound {
     Error,
 }
 
-/// (Frequenz in Hz, Dauer in ms) je Ton.
-fn notes(sound: Sound) -> &'static [(f32, u32)] {
+/// Ein Abschnitt eines Hinweistons: Die Frequenz gleitet in `ms`
+/// exponentiell von `from` nach `to` Hz; 0 Hz ist eine Pause.
+#[derive(Clone, Copy)]
+struct Segment {
+    from: f32,
+    to: f32,
+    ms: u32,
+    pure: bool,
+}
+
+/// Fester Ton mit leichtem Oberton.
+const fn tone(freq: f32, ms: u32) -> Segment {
+    Segment { from: freq, to: freq, ms, pure: false }
+}
+
+/// Vogelpfiff: reiner Sinus und etwas leiser – hohe Töne wirken mit Oberton
+/// und voller Lautstärke schnell schrill.
+const fn chirp(from: f32, to: f32, ms: u32) -> Segment {
+    Segment { from, to, ms, pure: true }
+}
+
+/// Ganz kurzes Zwitschern: ein steigender und ein fallender Pfiff.
+const START: &[Segment] = &[chirp(3400.0, 5400.0, 40), tone(0.0, 30), chirp(5800.0, 3800.0, 55)];
+const DONE: &[Segment] = &[tone(1046.5, 70), tone(784.0, 120)];
+const ERROR: &[Segment] = &[tone(330.0, 120), tone(0.0, 40), tone(262.0, 180)];
+
+fn segments(sound: Sound) -> &'static [Segment] {
     match sound {
-        Sound::Start => &[(784.0, 70), (1046.5, 110)],
-        Sound::Done => &[(1046.5, 70), (784.0, 120)],
-        Sound::Error => &[(330.0, 120), (0.0, 40), (262.0, 180)],
+        Sound::Start => START,
+        Sound::Done => DONE,
+        Sound::Error => ERROR,
     }
 }
 
 fn synth(sound: Sound, volume: f32) -> Vec<u8> {
     const RATE: u32 = 44_100;
     let mut pcm: Vec<i16> = Vec::new();
-    for &(freq, ms) in notes(sound) {
-        let n = (RATE * ms / 1000) as usize;
+    for seg in segments(sound) {
+        let n = (RATE * seg.ms / 1000) as usize;
+        // Weiche Hüllkurve gegen Knacken; bei kurzen Pfiffen anteilig kürzer.
+        let attack = (n as f32 * 0.15).min(RATE as f32 * 0.008);
+        let release = (n as f32 * 0.6).min(RATE as f32 * 0.04);
+        let (gain, overtone) = if seg.pure { (0.22, 0.0) } else { (0.35, 0.25) };
+        let mut phase = 0.0f32;
         for i in 0..n {
-            let t = i as f32 / RATE as f32;
-            // Weiche Hüllkurve gegen Knacken.
-            let attack = (i as f32 / (RATE as f32 * 0.008)).min(1.0);
-            let release = ((n - i) as f32 / (RATE as f32 * 0.04)).min(1.0);
-            let env = attack * release;
-            let tone = (2.0 * std::f32::consts::PI * freq * t).sin()
-                + 0.25 * (4.0 * std::f32::consts::PI * freq * t).sin();
-            let v = if freq > 0.0 { tone * env * 0.35 * volume } else { 0.0 };
+            let v = if seg.from > 0.0 {
+                let freq = seg.from * (seg.to / seg.from).powf(i as f32 / n as f32);
+                // Phase aufsummieren, damit der Gleitton keine Sprünge macht.
+                phase = (phase + TAU * freq / RATE as f32) % TAU;
+                let env = (i as f32 / attack).min(1.0) * ((n - i) as f32 / release).min(1.0);
+                (phase.sin() + overtone * (2.0 * phase).sin()) * env * gain * volume
+            } else {
+                0.0
+            };
             pcm.push((v.clamp(-1.0, 1.0) * i16::MAX as f32) as i16);
         }
     }
@@ -84,4 +116,19 @@ pub fn play(sound: Sound, volume: f32) {
     }
     #[cfg(not(windows))]
     let _ = data;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn zwitschern_ist_kurz_und_uebersteuert_nicht() {
+        let wav = synth(Sound::Start, 1.0);
+        assert_eq!(&wav[..4], b"RIFF");
+        let samples: Vec<i16> = wav[44..].chunks(2).map(|b| i16::from_le_bytes([b[0], b[1]])).collect();
+        assert!(samples.len() <= 44_100 * 150 / 1000, "länger als 150 ms");
+        let peak = samples.iter().map(|s| s.unsigned_abs()).max().unwrap();
+        assert!(peak > 1000 && peak < i16::MAX as u16, "Spitze {peak}");
+    }
 }

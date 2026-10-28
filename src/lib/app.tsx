@@ -55,7 +55,7 @@ export function Toggle({ value, onChange, disabled }: { value: boolean; onChange
 
 export function Card({ title, sub, actions, children }: { title?: ReactNode; sub?: ReactNode; actions?: ReactNode; children: ReactNode }) {
   return (
-    <section className="card fade-in">
+    <section className="card">
       {(title || actions) && (
         <div className="card-header">
           <div>
@@ -86,7 +86,7 @@ export function Segmented<T extends string>({ value, options, onChange }: { valu
   return (
     <div className="segmented">
       {options.map(([v, label]) => (
-        <button key={v} type="button" className={v === value ? "active" : ""} onClick={() => onChange(v)}>
+        <button key={v} type="button" aria-pressed={v === value} onClick={() => onChange(v)}>
           {label}
         </button>
       ))}

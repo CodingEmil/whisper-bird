@@ -54,12 +54,12 @@ export default function Files() {
     <>
       <header className="page-header">
         <h1 className="page-title">{t("files.title")}</h1>
-        <p className="page-sub">{t("files.subtitle")}</p>
       </header>
+      <p className="page-sub">{t("files.subtitle")}</p>
 
       <div className={`dropzone ${dragging ? "over" : ""}`}>
         <Upload size={28} />
-        <div style={{ fontWeight: 600, fontSize: 15 }}>{t("files.drop")}</div>
+        <div style={{ fontWeight: 500 }}>{t("files.drop")}</div>
         <div className="small muted">{t("files.drop_hint")}</div>
         <div className="hstack" style={{ marginTop: 10 }}>
           <button className="btn primary" onClick={() => api.filesPick()}>
@@ -124,7 +124,7 @@ export default function Files() {
                       <Progress value={j.progress} />
                     </div>
                   )}
-                  {j.error && <div className="small" style={{ color: "var(--danger)", marginTop: 4 }}>{j.error}</div>}
+                  {j.error && <div className="small" style={{ color: "var(--bd-danger)", marginTop: 4 }}>{j.error}</div>}
                   {j.preview && <div className="small muted selectable" style={{ marginTop: 6 }}>{j.preview} …</div>}
                   {j.output && <div className="small muted mono" style={{ marginTop: 4 }}>{j.output}</div>}
                 </div>

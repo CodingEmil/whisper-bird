@@ -11,7 +11,7 @@ export function WithShortcut({ text, shortcut }: { text: string; shortcut: strin
   return (
     <>
       {before}
-      <span style={{ color: "var(--text)" }}>
+      <span style={{ color: "var(--bd-text)" }}>
         <Kbd shortcut={shortcut} />
       </span>
       {after}
@@ -47,22 +47,9 @@ export default function Home({ navigate }: { navigate: (p: PageId) => void }) {
 
   return (
     <>
-      <section
-        className="card fade-in"
-        style={{ background: "var(--gradient)", color: "#fff", border: "none", padding: "26px 28px", position: "relative", overflow: "hidden" }}
-      >
-        <h1 className="page-title" style={{ color: "#fff", fontSize: 28 }}>
-          {t("home.title")}
-        </h1>
-        <p style={{ margin: "0 0 18px", opacity: 0.9 }}>{t("home.subtitle")}</p>
-        <div className="vstack" style={{ gap: 6, fontSize: 14 }}>
-          <div>1. {t("home.step1")}</div>
-          <div>
-            2. <WithShortcut text={t("home.step2")} shortcut={settings.shortcut_dictate} />
-          </div>
-          <div>3. {t("home.step3")}</div>
-        </div>
-      </section>
+      <header className="page-header">
+        <h1 className="page-title">{t("nav.home")}</h1>
+      </header>
 
       {!anyAsr && (
         <div className="notice warning" style={{ marginBottom: 16 }}>
@@ -73,6 +60,16 @@ export default function Home({ navigate }: { navigate: (p: PageId) => void }) {
           </button>
         </div>
       )}
+
+      <Card title={t("home.how")}>
+        <ol className="steps">
+          <li>{t("home.step1")}</li>
+          <li>
+            <WithShortcut text={t("home.step2")} shortcut={settings.shortcut_dictate} />
+          </li>
+          <li>{t("home.step3")}</li>
+        </ol>
+      </Card>
 
       <div className="grid-2">
         <Card title={t("home.status")}>
@@ -104,11 +101,11 @@ export default function Home({ navigate }: { navigate: (p: PageId) => void }) {
         <Card title={t("nav.stats")}>
           <div className="row">
             <div className="row-text">
-              <div style={{ fontSize: 26, fontWeight: 650 }}>{(stats?.words ?? 0).toLocaleString(lang)}</div>
+              <div className="stat-value">{(stats?.words ?? 0).toLocaleString(lang)}</div>
               <div className="row-hint">{t("home.words_total")}</div>
             </div>
             <div className="row-text" style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 26, fontWeight: 650 }}>{formatDuration(savedMin * 60000)}</div>
+              <div className="stat-value">{formatDuration(savedMin * 60000)}</div>
               <div className="row-hint">{t("home.time_saved")}</div>
             </div>
           </div>

@@ -1,4 +1,4 @@
-# Whisper Island
+# Whisper Bird
 
 Lokales Diktieren, Verbessern und Transkribieren für Windows – in jede App.
 Rust-Backend (Tauri 2) mit React/TypeScript-Oberfläche.

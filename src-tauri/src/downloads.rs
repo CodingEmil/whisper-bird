@@ -108,7 +108,7 @@ async fn run(app: &AppHandle, req: &DownloadRequest, cancel: &AtomicBool) -> any
     let mut have = tokio::fs::metadata(&part).await.map(|m| m.len()).unwrap_or(0);
 
     let client = reqwest::Client::builder()
-        .user_agent(concat!("WhisperIsland/", env!("CARGO_PKG_VERSION")))
+        .user_agent(concat!("WhisperBird/", env!("CARGO_PKG_VERSION")))
         .connect_timeout(Duration::from_secs(20))
         .build()?;
 

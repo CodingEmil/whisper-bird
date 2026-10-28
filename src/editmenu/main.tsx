@@ -175,7 +175,7 @@ function EditMenu() {
             />
             <button
               className={`em-mic ${listening ? "on" : ""}`}
-              style={listening ? { boxShadow: `0 0 0 ${2 + level * 8}px rgba(244,63,94,.25)` } : undefined}
+              style={listening ? { boxShadow: `0 0 0 ${2 + level * 8}px color-mix(in srgb, var(--bd-danger) 35%, transparent)` } : undefined}
               onClick={toggleVoice}
               disabled={busy}
               title="Mic"
@@ -210,7 +210,7 @@ function EditMenu() {
               })}
             </div>
           )}
-          {error && <div className="notice danger small" style={{ margin: "0 14px 10px" }}>{error}</div>}
+          {error && <div className="notice danger small" style={{ margin: "0 var(--bd-space-4) var(--bd-space-3)" }}>{error}</div>}
           <div className="em-foot">{t("editmenu.hint")}</div>
         </>
       ) : (

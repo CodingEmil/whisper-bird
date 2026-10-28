@@ -4,7 +4,7 @@ import { api, formatBytes } from "../lib/api";
 import { Dots, Progress, Segmented, useApp } from "../lib/app";
 import { useModels } from "./Models";
 import { WithShortcut } from "./Home";
-import iconUrl from "../../src-tauri/icons/128x128@2x.png";
+import { Bird } from "../lib/bird";
 
 const CHOICES = ["parakeet-tdt-0.6b-v3", "Qwen3-ASR-1.7B", "whisper-large-v3-turbo", "parakeet-unified-en-0.6b"];
 
@@ -28,9 +28,12 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
 
   return (
     <div className="onboarding">
-      <div className="onboarding-card fade-in">
+      <div className="onboarding-card">
         <div className="hstack" style={{ justifyContent: "space-between", marginBottom: 18 }}>
-          <img src={iconUrl} alt="" width={56} height={56} />
+          <div className="brand" style={{ padding: 0 }}>
+            <Bird size={44} />
+            <span className="brand-name">{t("app.name")}</span>
+          </div>
           <Segmented
             value={s.ui_language}
             options={[
@@ -45,13 +48,13 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
           <>
             <h1 className="page-title">{t("onb.welcome")}</h1>
             <p className="page-sub" style={{ marginBottom: 20 }}>{t("onb.welcome_text")}</p>
-            <div className="small muted" style={{ marginBottom: 8, fontWeight: 600 }}>{t("onb.choose_model")}</div>
+            <div className="small muted" style={{ marginBottom: 8, fontWeight: 500 }}>{t("onb.choose_model")}</div>
             <div className="vstack" style={{ gap: 8 }}>
               {CHOICES.map((id) => {
                 const m = models.find((x) => x.id === id);
                 if (!m) return null;
                 return (
-                  <button key={id} className={`choice ${choice === id ? "active" : ""}`} onClick={() => setChoice(id)}>
+                  <button key={id} className="choice" aria-pressed={choice === id} onClick={() => setChoice(id)}>
                     <div className="hstack" style={{ justifyContent: "space-between" }}>
                       <span className="hstack">
                         <strong>{m.name}</strong>
@@ -74,7 +77,7 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
             <div className="hstack" style={{ marginTop: 22, justifyContent: "space-between" }}>
               <button className="btn ghost" onClick={finish}>{t("onb.skip")}</button>
               <button
-                className="btn gradient large"
+                className="btn primary large"
                 onClick={async () => {
                   await update({ asr_model: choice });
                   if (model?.installed) setStep("try");
@@ -118,7 +121,7 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
             </p>
             <textarea className="textarea" rows={5} autoFocus placeholder={t("home.try_placeholder")} />
             <div className="hstack" style={{ marginTop: 22, justifyContent: "flex-end" }}>
-              <button className="btn gradient large" onClick={finish}>
+              <button className="btn primary large" onClick={finish}>
                 <Check size={17} /> {t("onb.done")}
               </button>
             </div>

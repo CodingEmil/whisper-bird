@@ -5,7 +5,9 @@ import { api, formatDuration, type Meeting, type MeetingSource, type MeetingSumm
 import { Card, CopyButton, Row, Segmented, Toggle, useApp, useEvent } from "../lib/app";
 import { ModelRow, useModels } from "./Models";
 
-const SPEAKER_TINTS = ["#5b4cf0", "#0891b2", "#c2410c", "#15803d", "#a21caf", "#b45309"];
+// Gedämpfte Pastelltöne passend zu Birdy. Sie unterscheiden nur Sprecher –
+// der Name steht immer daneben, die Farbe trägt keine Bedeutung allein.
+const SPEAKER_TINTS = ["#b7d2b3", "#abc9df", "#e9c493", "#e6aaa5", "#cbbfe0", "#d6d2b0"];
 
 function speakerName(m: Meeting, i: number) {
   return m.speakers[i] ?? (i >= 0 ? `#${i + 1}` : "");
@@ -113,23 +115,21 @@ function Detail({ id, onBack }: { id: string; onBack: () => void }) {
 
   return (
     <>
-      <div className="no-print">
-        <button className="btn ghost small" onClick={onBack} style={{ marginBottom: 12 }}>
-          <ChevronLeft size={15} /> {t("meet.back")}
-        </button>
-      </div>
       <div className="print-area">
         <header className="page-header">
+          <button className="btn ghost small no-print" onClick={onBack}>
+            <ChevronLeft size={15} /> {t("meet.back")}
+          </button>
           <input
             className="title-input"
             defaultValue={m.title}
             key={m.id}
             onBlur={async (e) => e.target.value.trim() && setM(await api.meetingUpdate(m.id, e.target.value.trim()))}
           />
-          <p className="page-sub">
-            {new Date(m.created_at).toLocaleString(lang, { dateStyle: "full", timeStyle: "short" })} · {formatDuration(m.duration_ms)}
-          </p>
         </header>
+        <p className="page-sub">
+          {new Date(m.created_at).toLocaleString(lang, { dateStyle: "full", timeStyle: "short" })} · {formatDuration(m.duration_ms)}
+        </p>
 
         {m.status === "processing" && (
           <div className="notice no-print" style={{ marginBottom: 16 }}>
@@ -148,14 +148,14 @@ function Detail({ id, onBack }: { id: string; onBack: () => void }) {
                   <input
                     key={i}
                     autoFocus
-                    className="input"
-                    style={{ height: 30, width: 160 }}
+                    className="input small"
+                    style={{ width: 160 }}
                     defaultValue={name}
                     onBlur={(e) => renameSpeaker(i, e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && renameSpeaker(i, e.currentTarget.value)}
                   />
                 ) : (
-                  <button key={i} className="chip" style={{ paddingRight: 11, cursor: "pointer" }} onClick={() => setEditing(i)}>
+                  <button key={i} className="chip" onClick={() => setEditing(i)}>
                     <span className="speaker-dot" style={{ background: SPEAKER_TINTS[i % SPEAKER_TINTS.length] }} />
                     {name}
                   </button>
@@ -277,7 +277,7 @@ function LiveView({ id }: { id: string }) {
             <span className="muted">{t("meet.waiting")}</span>
           ) : (
             m.segments.map((s, i) => (
-              <p key={i} className="fade-in">
+              <p key={i}>
                 <span className="muted small" style={{ marginRight: 8 }}>{formatDuration(s.start_ms)}</span>
                 {s.text}
               </p>
@@ -319,8 +319,8 @@ export default function Meetings() {
     <>
       <header className="page-header">
         <h1 className="page-title">{t("meet.title")}</h1>
-        <p className="page-sub">{t("meet.subtitle")}</p>
       </header>
+      <p className="page-sub">{t("meet.subtitle")}</p>
 
       {active ? (
         <LiveView id={active} />
@@ -347,7 +347,7 @@ export default function Meetings() {
           <div className="row">
             <div className="spacer" />
             <button
-              className="btn gradient large"
+              className="btn primary large"
               onClick={async () => {
                 setError(null);
                 try {
@@ -361,7 +361,7 @@ export default function Meetings() {
             </button>
           </div>
           {error && (
-            <div style={{ padding: "0 18px 16px" }}>
+            <div className="card-inset">
               <div className="notice danger">{error}</div>
             </div>
           )}

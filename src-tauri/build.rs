@@ -5,6 +5,9 @@ fn main() {
     if let Some(lib) = vulkan_lib_dir() {
         println!("cargo:rustc-link-search=native={}", lib.display());
     }
+    // Das Fenster-Icon kommt unter Windows aus der Ressource der .exe;
+    // tauri-build erzeugt sie nur neu, wenn das Skript erneut läuft.
+    println!("cargo:rerun-if-changed=icons/icon.ico");
     tauri_build::build()
 }
 

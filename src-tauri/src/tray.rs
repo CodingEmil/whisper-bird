@@ -32,7 +32,7 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
     }
     let menu = build_menu(app)?;
     let mut builder = TrayIconBuilder::with_id(TRAY_ID)
-        .tooltip("Whisper Island")
+        .tooltip("Whisper Bird")
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_tray_icon_event(|_tray, event| {
@@ -68,10 +68,10 @@ pub fn set_status(status: &'static str) {
         if let Some(tray) = app.tray_by_id(TRAY_ID) {
             let _ = tray.set_icon(icon(status));
             let tip = match status {
-                "recording" => "Whisper Island – Aufnahme läuft",
-                "meeting" => "Whisper Island – Meeting läuft",
-                "transcribing" | "enhancing" => "Whisper Island – verarbeite …",
-                _ => "Whisper Island",
+                "recording" => "Whisper Bird – Aufnahme läuft",
+                "meeting" => "Whisper Bird – Meeting läuft",
+                "transcribing" | "enhancing" => "Whisper Bird – verarbeite …",
+                _ => "Whisper Bird",
             };
             let _ = tray.set_tooltip(Some(tip));
         }

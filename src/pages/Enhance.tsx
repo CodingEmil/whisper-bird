@@ -52,8 +52,8 @@ export default function Enhance() {
     <>
       <header className="page-header">
         <h1 className="page-title">{t("enh.title")}</h1>
-        <p className="page-sub">{t("enh.subtitle")}</p>
       </header>
+      <p className="page-sub">{t("enh.subtitle")}</p>
 
       <Card>
         <Row label={t("enh.mode")}>
@@ -68,7 +68,7 @@ export default function Enhance() {
           />
         </Row>
         {s.enhance_mode === "second_shortcut" && !s.shortcut_dictate_enhance && (
-          <div style={{ padding: "0 18px 14px" }}>
+          <div className="card-inset">
             <div className="notice warning">{t("enh.second_missing")}</div>
           </div>
         )}
@@ -107,12 +107,12 @@ export default function Enhance() {
             )}
           </Row>
           {llamaDownloading && llamaProgress && (
-            <div style={{ padding: "0 18px 12px" }}>
+            <div className="card-inset">
               <Progress value={llamaProgress.total ? llamaProgress.downloaded / llamaProgress.total : 0} />
             </div>
           )}
           {llamaProgress?.state === "error" && (
-            <div style={{ padding: "0 18px 12px" }}>
+            <div className="card-inset">
               <div className="notice danger">{llamaProgress.error}</div>
             </div>
           )}
@@ -250,7 +250,7 @@ export default function Enhance() {
           </button>
         </Row>
         {testResult && (
-          <div style={{ padding: "0 18px 16px" }}>
+          <div className="card-inset">
             <div className={`notice ${testResult.ok ? "success" : "danger"}`} style={{ whiteSpace: "pre-wrap" }}>
               <div className="selectable">
                 {testResult.ok && <strong>{t("enh.test_ok")} </strong>}

@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Rechte für alle Fenster von Whisper Island",
+  "description": "Rechte für alle Fenster von Whisper Bird",
   "windows": ["main", "overlay", "editmenu"],
   "permissions": [
     "core:default",

@@ -9,9 +9,9 @@ function compact(n: number, lang: string) {
 
 function Tile({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="card" style={{ margin: 0, padding: "14px 16px" }}>
+    <div className="card" style={{ margin: 0, padding: "var(--bd-space-4)" }}>
       <div className="small muted">{label}</div>
-      <div style={{ fontSize: 24, fontWeight: 620, marginTop: 2, fontVariantNumeric: "proportional-nums" }}>{value}</div>
+      <div className="stat-value" style={{ marginBlock: "var(--bd-space-1)", fontVariantNumeric: "proportional-nums" }}>{value}</div>
       {hint && <div className="small muted">{hint}</div>}
     </div>
   );
@@ -64,10 +64,10 @@ function DailyChart({ days }: { days: StatsData["days"] }) {
           <table style={{ width: "100%", borderCollapse: "collapse", fontVariantNumeric: "tabular-nums" }}>
             <tbody>
               {[...series].reverse().map((s) => (
-                <tr key={s.day} style={{ borderTop: "1px solid var(--border)" }}>
+                <tr key={s.day} style={{ borderTop: "1px solid var(--bd-border)" }}>
                   <td style={{ padding: "5px 0" }}>{fmtDay(s.day, "long")}</td>
                   <td style={{ textAlign: "right" }}>{s.words.toLocaleString(lang)}</td>
-                  <td style={{ textAlign: "right", color: "var(--text-3)", width: 120 }}>
+                  <td style={{ textAlign: "right", color: "var(--bd-text-subtle)", width: 120 }}>
                     {s.count} × {t("stats.transcriptions")}
                   </td>
                 </tr>
@@ -100,7 +100,7 @@ function DailyChart({ days }: { days: StatsData["days"] }) {
                   style={{ left: `${((hover + 0.5) / series.length) * 100}%` }}
                 >
                   <div className="small muted">{fmtDay(series[hover].day, "long")}</div>
-                  <div style={{ fontWeight: 620 }}>
+                  <div style={{ fontWeight: 600 }}>
                     {series[hover].words.toLocaleString(lang)} {t("stats.words")}
                   </div>
                   <div className="small muted">
@@ -140,10 +140,10 @@ export default function Stats() {
     <>
       <header className="page-header">
         <h1 className="page-title">{t("stats.title")}</h1>
-        {stats.first_use && (
-          <p className="page-sub">{t("stats.since", { date: new Date(stats.first_use).toLocaleDateString(lang, { dateStyle: "long" }) })}</p>
-        )}
       </header>
+      {stats.first_use && (
+        <p className="page-sub">{t("stats.since", { date: new Date(stats.first_use).toLocaleDateString(lang, { dateStyle: "long" }) })}</p>
+      )}
 
       <div className="grid-4" style={{ marginBottom: 16 }}>
         <Tile label={t("stats.transcriptions")} value={compact(stats.count, lang)} />

@@ -37,8 +37,8 @@ export default function Shortcuts() {
     <>
       <header className="page-header">
         <h1 className="page-title">{t("sc.title")}</h1>
-        <p className="page-sub">{t("sc.subtitle")}</p>
       </header>
+      <p className="page-sub">{t("sc.subtitle")}</p>
       <Card>
         {FIELDS.map((f) => {
           const err = errors.find((e) => e.field === f.field);
@@ -48,9 +48,9 @@ export default function Shortcuts() {
               label={t(f.label)}
               hint={
                 conflict === f.field ? (
-                  <span style={{ color: "var(--danger)" }}>{t("sc.conflict")}</span>
+                  <span style={{ color: "var(--bd-danger)" }}>{t("sc.conflict")}</span>
                 ) : err ? (
-                  <span style={{ color: "var(--danger)" }}>{err.message}</span>
+                  <span style={{ color: "var(--bd-danger)" }}>{err.message}</span>
                 ) : (
                   t(f.hint)
                 )

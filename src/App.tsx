@@ -32,7 +32,7 @@ import Files from "./pages/Files";
 import Advanced from "./pages/Advanced";
 import Help from "./pages/Help";
 import Onboarding from "./pages/Onboarding";
-import iconUrl from "../src-tauri/icons/128x128.png";
+import { Bird } from "./lib/bird";
 
 export type PageId =
   | "home"
@@ -106,7 +106,7 @@ export default function App() {
     <div className="layout">
       <nav className="sidebar">
         <div className="brand">
-          <img src={iconUrl} alt="" />
+          <Bird size={36} />
           <div>
             <div className="brand-name">{t("app.name")}</div>
             <div className="brand-sub">Windows · lokal</div>
@@ -117,7 +117,11 @@ export default function App() {
           return (
             <div key={p.id} style={{ display: "contents" }}>
               {p.sepBefore && <div className="nav-sep" />}
-              <button className={`nav-item ${p.id === page ? "active" : ""}`} onClick={() => setPage(p.id)}>
+              <button
+                className="nav-item"
+                aria-current={p.id === page ? "page" : undefined}
+                onClick={() => setPage(p.id)}
+              >
                 <Icon size={17} />
                 {t(p.key)}
                 {p.id === "meetings" && meetingActive && <span className="nav-badge" />}

@@ -92,7 +92,7 @@ fn normalize(s: &str) -> String {
 }
 
 /// Ersetzt ähnlich klingende Schreibweisen durch die Custom Words
-/// („Kubernetis“ → „Kubernetes“, „whisper island“ → „Whisper Island“).
+/// („Kubernetis“ → „Kubernetes“, „whisper bird“ → „Whisper Bird“).
 pub fn apply_custom_words(text: &str, words: &[String]) -> String {
     if words.is_empty() || text.is_empty() {
         return text.to_string();
@@ -235,10 +235,10 @@ mod tests {
 
     #[test]
     fn custom_words_fix_spelling() {
-        let words = vec!["Kubernetes".to_string(), "Whisper Island".to_string()];
+        let words = vec!["Kubernetes".to_string(), "Whisper Bird".to_string()];
         assert_eq!(
-            apply_custom_words("Wir nutzen Kubernetis und whisper island.", &words),
-            "Wir nutzen Kubernetes und Whisper Island."
+            apply_custom_words("Wir nutzen Kubernetis und whisper bird.", &words),
+            "Wir nutzen Kubernetes und Whisper Bird."
         );
         assert_eq!(apply_custom_words("Das ist gut.", &words), "Das ist gut.");
     }

@@ -35,7 +35,7 @@ export default function Help() {
               <span className="row-label spacer">{t(q)}</span>
               <ChevronDown size={16} style={{ transform: open === i ? "rotate(180deg)" : undefined, transition: "transform .15s" }} />
             </div>
-            {open === i && <div className="muted fade-in" style={{ marginTop: 6 }}>{t(a)}</div>}
+            {open === i && <div className="muted" style={{ marginTop: 6 }}>{t(a)}</div>}
           </div>
         ))}
       </Card>

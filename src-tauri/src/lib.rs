@@ -33,7 +33,7 @@ pub fn show_main_window(page: Option<&str>) {
         let window = match app.get_webview_window(MAIN_LABEL) {
             Some(w) => w,
             None => match WebviewWindowBuilder::new(&app, MAIN_LABEL, WebviewUrl::App("index.html".into()))
-                .title("Whisper Island")
+                .title("Whisper Bird")
                 .inner_size(1100.0, 740.0)
                 .min_inner_size(900.0, 600.0)
                 .center()
@@ -98,7 +98,7 @@ pub fn run() {
                 .targets([
                     tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
                     tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir {
-                        file_name: Some("whisper-island".into()),
+                        file_name: Some("whisper-bird".into()),
                     }),
                 ])
                 .level(log::LevelFilter::Debug)
@@ -183,7 +183,7 @@ pub fn run() {
             let st = state::init(handle.clone(), dirs)?;
             let s = st.settings();
             log::set_max_level(if s.debug_logging { log::LevelFilter::Debug } else { log::LevelFilter::Info });
-            log::info!("Whisper Island {} startet", env!("CARGO_PKG_VERSION"));
+            log::info!("Whisper Bird {} startet", env!("CARGO_PKG_VERSION"));
 
             overlay::create(&handle)?;
             editmenu::create(&handle)?;
@@ -215,7 +215,7 @@ pub fn run() {
 
     let app = builder
         .build(tauri::generate_context!())
-        .expect("Fehler beim Starten von Whisper Island");
+        .expect("Fehler beim Starten von Whisper Bird");
     app.run(|_app, event| {
         if let RunEvent::ExitRequested { api, code, .. } = event {
             // Ohne expliziten Exit-Code (letztes Fenster zu) im Tray weiterlaufen.

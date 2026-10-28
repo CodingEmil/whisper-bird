@@ -23,7 +23,7 @@ export function HistoryItem({ entry, compact, onDelete }: { entry: HistoryEntry;
   return (
     <div
       className="row"
-      style={{ alignItems: "flex-start", cursor: "default", background: flash ? "var(--accent-soft)" : undefined, transition: "background .3s" }}
+      style={{ alignItems: "flex-start", cursor: "default", background: flash ? "var(--bd-accent-soft)" : undefined, transition: "background .3s" }}
       onDoubleClick={async () => {
         await api.copyText(entry.text);
         setFlash(true);
@@ -98,18 +98,18 @@ export default function History() {
     <>
       <header className="page-header">
         <h1 className="page-title">{t("hist.title")}</h1>
-        <p className="page-sub">{t("hist.double_click")}</p>
       </header>
+      <p className="page-sub">{t("hist.double_click")}</p>
 
       <Card>
         <div className="card-body vstack" style={{ gap: 12, paddingTop: 16 }}>
           <div className="hstack">
             <div style={{ position: "relative", flex: 1 }}>
-              <Search size={15} style={{ position: "absolute", left: 10, top: 10, color: "var(--text-3)" }} />
+              <Search size={15} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--bd-text-subtle)" }} />
               <input
                 className="input wide"
                 type="search"
-                style={{ paddingLeft: 32 }}
+                style={{ paddingLeft: 36 }}
                 placeholder={t("common.search")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -138,20 +138,23 @@ export default function History() {
               onChange={setSource}
             />
             <div className="spacer" />
-            <span className="small muted">{t("hist.from")}</span>
-            <input
-              className="input"
-              type="date"
-              value={toInputDate(from)}
-              onChange={(e) => setFrom(e.target.value ? new Date(e.target.value + "T00:00").getTime() : null)}
-            />
-            <span className="small muted">{t("hist.to")}</span>
-            <input
-              className="input"
-              type="date"
-              value={toInputDate(to)}
-              onChange={(e) => setTo(e.target.value ? new Date(e.target.value + "T23:59:59").getTime() : null)}
-            />
+            {/* Zeitraum als Einheit, damit er beim Umbrechen nicht zerfällt. */}
+            <div className="hstack">
+              <span className="small muted">{t("hist.from")}</span>
+              <input
+                className="input"
+                type="date"
+                value={toInputDate(from)}
+                onChange={(e) => setFrom(e.target.value ? new Date(e.target.value + "T00:00").getTime() : null)}
+              />
+              <span className="small muted">{t("hist.to")}</span>
+              <input
+                className="input"
+                type="date"
+                value={toInputDate(to)}
+                onChange={(e) => setTo(e.target.value ? new Date(e.target.value + "T23:59:59").getTime() : null)}
+              />
+            </div>
           </div>
         </div>
       </Card>

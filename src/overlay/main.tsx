@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom/client";
-import { AlertTriangle, Check, FileAudio, LoaderCircle, Plus, Sparkles, Square, X } from "lucide-react";
+import { AlertTriangle, Check, Plus, Sparkles, Square, X } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { api, on, type Settings } from "../lib/api";
+import { Bird } from "../lib/bird";
 import { translate } from "../lib/i18n";
 import "./overlay.css";
 
@@ -16,7 +17,7 @@ interface OverlayState {
   floating: boolean;
 }
 
-const BARS = 26;
+const BARS = 22;
 
 function Waveform({ levels }: { levels: number[] }) {
   return (
@@ -54,15 +55,7 @@ function IdleIcon({ drop }: { drop: boolean }) {
         api.overlayContextMenu();
       }}
     >
-      {drop ? (
-        <Plus size={22} />
-      ) : (
-        <div className="glyph">
-          {[0.35, 0.65, 1, 0.7, 0.4].map((h, i) => (
-            <span key={i} style={{ height: `${h * 100}%` }} />
-          ))}
-        </div>
-      )}
+      {drop ? <Plus size={22} /> : <Bird size={34} />}
     </div>
   );
 }
@@ -109,10 +102,20 @@ function Overlay() {
   }
 
   return (
-    <div className={`pill ${state.phase}`} onContextMenu={(e) => e.preventDefault()}>
+    <div
+      className={`pill ${state.phase}`}
+      onMouseDown={(e) => {
+        // Die ganze Pille ist verschiebbar, nur die Knöpfe nicht.
+        if (e.button === 0 && !(e.target as HTMLElement).closest("button")) {
+          getCurrentWindow().startDragging();
+        }
+      }}
+      onContextMenu={(e) => e.preventDefault()}
+    >
       {state.phase === "recording" && (
         <>
-          <span className="rec" />
+          {/* Der Vogel singt mit: Der Schnabel folgt dem aktuellen Pegel. */}
+          <Bird size={30} open={levels[levels.length - 1] * 1.6} />
           {state.enhance && <Sparkles size={14} className="enh" />}
           <Waveform levels={levels} />
           <span className="timer">{timer}</span>
@@ -126,8 +129,10 @@ function Overlay() {
       )}
       {(state.phase === "transcribing" || state.phase === "enhancing") && (
         <>
-          {state.phase === "enhancing" ? <Sparkles size={16} className="enh pulse" /> : <LoaderCircle size={16} className="spin" />}
+          {/* Während der Arbeit pickt der Vogel – das ist die Ladeanzeige. */}
+          <Bird size={30} className="peck" />
           <span className="label">{state.phase === "enhancing" ? t("overlay.enhancing") : t("overlay.transcribing")}</span>
+          {state.phase === "enhancing" && <Sparkles size={14} className="enh pulse" />}
           <button className="pill-btn" title="Esc" onClick={() => api.dictationCancel()}>
             <X size={15} />
           </button>
@@ -135,6 +140,7 @@ function Overlay() {
       )}
       {state.phase === "done" && (
         <>
+          <Bird size={30} />
           <Check size={18} className="ok" />
           {state.enhance && <Sparkles size={14} className="enh" />}
         </>
@@ -147,7 +153,7 @@ function Overlay() {
       )}
       {state.phase === "files" && (
         <>
-          <FileAudio size={16} />
+          <Bird size={30} />
           <div className="file-info">
             <span className="file-name">{state.message}</span>
             <div className="file-bar">

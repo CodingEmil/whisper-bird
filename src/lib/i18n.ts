@@ -1,7 +1,7 @@
 // Oberflächentexte (Deutsch / Englisch).
 
 const de = {
-  "app.name": "Whisper Island",
+  "app.name": "Whisper Bird",
   "nav.home": "Übersicht",
   "nav.dictation": "Diktat",
   "nav.models": "Modelle",
@@ -46,8 +46,6 @@ const de = {
   "common.remove": "Entfernen",
   "common.not_set": "Nicht gesetzt",
 
-  "home.title": "Willkommen bei Whisper Island",
-  "home.subtitle": "Diktiere in jede App. Lokal, privat, ohne Abo.",
   "home.how": "So geht’s",
   "home.step1": "Setze den Cursor in ein beliebiges Textfeld.",
   "home.step2": "Drücke {shortcut} und sprich.",
@@ -164,7 +162,7 @@ const de = {
 
   "words.title": "Wörter & Snippets",
   "words.custom": "Custom Words",
-  "words.custom_hint": "Namen und Fachbegriffe, die oft falsch erkannt werden. Whisper Island korrigiert sie automatisch.",
+  "words.custom_hint": "Namen und Fachbegriffe, die oft falsch erkannt werden. Whisper Bird korrigiert sie automatisch.",
   "words.placeholder": "Wort oder Name, Enter zum Hinzufügen",
   "words.snippets": "Snippets",
   "words.snippets_hint": "Sprich den Auslöser – eingefügt wird der hinterlegte Text, exakt mit Zeilenumbrüchen und Tabs.",
@@ -306,7 +304,7 @@ const de = {
   "help.credits": "Danksagungen",
   "help.credits_text": "Spracherkennung über transcribe.cpp, Audio und Hotkeys aus dem Handy-Projekt (MIT), Enhance über llama.cpp. Modelle: NVIDIA Parakeet & Canary, Qwen3-ASR, OpenAI Whisper, Google Gemma 4.",
 
-  "onb.welcome": "Willkommen bei Whisper Island",
+  "onb.welcome": "Willkommen bei Whisper Bird",
   "onb.welcome_text": "Diktiere in jede App – lokal und privat. Zuerst brauchen wir ein Spracherkennungsmodell.",
   "onb.choose_model": "Modell wählen",
   "onb.download": "Herunterladen & loslegen",
@@ -335,7 +333,7 @@ const de = {
 type Key = keyof typeof de;
 
 const en: Record<Key, string> = {
-  "app.name": "Whisper Island",
+  "app.name": "Whisper Bird",
   "nav.home": "Overview",
   "nav.dictation": "Dictation",
   "nav.models": "Models",
@@ -380,8 +378,6 @@ const en: Record<Key, string> = {
   "common.remove": "Remove",
   "common.not_set": "Not set",
 
-  "home.title": "Welcome to Whisper Island",
-  "home.subtitle": "Dictate into any app. Local, private, no subscription.",
   "home.how": "How it works",
   "home.step1": "Place your cursor in any text field.",
   "home.step2": "Press {shortcut} and speak.",
@@ -498,7 +494,7 @@ const en: Record<Key, string> = {
 
   "words.title": "Words & snippets",
   "words.custom": "Custom words",
-  "words.custom_hint": "Names and terms that are often misrecognized. Whisper Island corrects them automatically.",
+  "words.custom_hint": "Names and terms that are often misrecognized. Whisper Bird corrects them automatically.",
   "words.placeholder": "Word or name, Enter to add",
   "words.snippets": "Snippets",
   "words.snippets_hint": "Say the trigger – the stored text is inserted exactly, including line breaks and tabs.",
@@ -640,7 +636,7 @@ const en: Record<Key, string> = {
   "help.credits": "Credits",
   "help.credits_text": "Speech recognition via transcribe.cpp, audio and hotkeys from the Handy project (MIT), Enhance via llama.cpp. Models: NVIDIA Parakeet & Canary, Qwen3-ASR, OpenAI Whisper, Google Gemma 4.",
 
-  "onb.welcome": "Welcome to Whisper Island",
+  "onb.welcome": "Welcome to Whisper Bird",
   "onb.welcome_text": "Dictate into any app – locally and privately. First, we need a speech recognition model.",
   "onb.choose_model": "Choose a model",
   "onb.download": "Download & get started",

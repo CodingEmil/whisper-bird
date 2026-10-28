@@ -104,14 +104,14 @@ jobs:
           $version = "${{ steps.cfg.outputs.version }}"
           New-Item -ItemType Directory out, portable | Out-Null
           Copy-Item src-tauri\target\release\bundle\nsis\*.exe out\
-          Copy-Item src-tauri\target\release\whisper-island.exe "portable\Whisper Island.exe"
+          Copy-Item src-tauri\target\release\whisper-island.exe "portable\Whisper Bird.exe"
           Copy-Item src-tauri\redist\*.dll portable\
-          Compress-Archive portable\* "out\Whisper-Island_${version}_x64-portable.zip"
+          Compress-Archive portable\* "out\Whisper-Bird_${version}_x64-portable.zip"
           Get-ChildItem out | Format-Table Name, Length
 
       - uses: actions/upload-artifact@v7
         with:
-          name: whisper-island-${{ steps.cfg.outputs.version }}
+          name: whisper-bird-${{ steps.cfg.outputs.version }}
           path: out/*
 
       - name: GitHub Release
@@ -121,6 +121,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" out/* \
-            --title "Whisper Island ${{ steps.cfg.outputs.version }}" \
+            --title "Whisper Bird ${{ steps.cfg.outputs.version }}" \
             --generate-notes \
             --notes "Installer (\`*-setup.exe\`) oder portable Zip. Nicht signiert: Windows SmartScreen zeigt beim ersten Start „Unbekannter Herausgeber“ → Weitere Informationen → Trotzdem ausführen."

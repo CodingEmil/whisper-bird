@@ -23,7 +23,7 @@ pub fn t(lang: &str, key: &str) -> String {
         "tray_floating" => if de { "Floating Icon anzeigen" } else { "Show floating icon" },
         "tray_enhance" => if de { "Enhance immer an" } else { "Always enhance" },
         "tray_settings" => if de { "Einstellungen …" } else { "Settings …" },
-        "tray_quit" => if de { "Whisper Island beenden" } else { "Quit Whisper Island" },
+        "tray_quit" => if de { "Whisper Bird beenden" } else { "Quit Whisper Bird" },
         "tray_none" => if de { "Noch keine Transkription" } else { "No transcription yet" },
         "tray_copy_hint" => if de { "Klicken zum Kopieren" } else { "Click to copy" },
         "tray_hide_icon" => if de { "Floating Icon ausblenden" } else { "Hide floating icon" },

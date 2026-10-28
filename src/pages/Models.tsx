@@ -139,8 +139,8 @@ export default function Models() {
     <>
       <header className="page-header">
         <h1 className="page-title">{t("models.title")}</h1>
-        <p className="page-sub">{t("models.subtitle")}</p>
       </header>
+      <p className="page-sub">{t("models.subtitle")}</p>
 
       <Card title={t("models.asr")}>
         {byKind(["asr"]).map((m) => (
