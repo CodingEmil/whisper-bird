@@ -3,6 +3,7 @@ import { AlertTriangle, ChevronLeft, ChevronRight, FileText, LoaderCircle, Mic, 
 import { save } from "@tauri-apps/plugin-dialog";
 import { api, formatDuration, type Meeting, type MeetingSource, type MeetingSummary, type ModelStatus } from "../lib/api";
 import { Card, CopyButton, Row, Segmented, Toggle, useApp, useEvent } from "../lib/app";
+import { useConfirm } from "../lib/confirm";
 import { ModelRow, useModels } from "./Models";
 
 // Pastelltöne aus dem Eisvogel (tokens.css). Sie unterscheiden nur Sprecher:
@@ -74,6 +75,7 @@ function transcriptText(m: Meeting) {
 
 function Detail({ id, onBack }: { id: string; onBack: () => void }) {
   const { t, lang } = useApp();
+  const confirm = useConfirm();
   const [m, setM] = useState<Meeting | null>(null);
   const [tab, setTab] = useState<"notes" | "transcript">("transcript");
   const [busy, setBusy] = useState(false);
@@ -210,9 +212,17 @@ function Detail({ id, onBack }: { id: string; onBack: () => void }) {
             className="btn ghost icon danger"
             aria-label={t("common.delete")}
             onClick={async () => {
-              if (confirm(t("meet.delete_confirm"))) {
+              const ok = await confirm({
+                title: t("meet.delete_confirm"),
+                body: t("meet.delete_body"),
+                action: t("common.delete"),
+              });
+              if (!ok) return;
+              try {
                 await api.meetingDelete(m.id);
                 onBack();
+              } catch (e) {
+                setError(String(e));
               }
             }}
           >

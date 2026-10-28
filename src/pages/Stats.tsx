@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChartColumn, List } from "lucide-react";
+import { ChartColumn, List, RotateCcw } from "lucide-react";
 import { api, formatDuration, type Stats as StatsData } from "../lib/api";
 import { Card, Segmented, useApp, useEvent } from "../lib/app";
+import { useConfirm } from "../lib/confirm";
 import { languageName } from "../lib/i18n";
 
 function compact(n: number, lang: string) {
@@ -126,6 +127,7 @@ function DailyChart({ days }: { days: StatsData["days"] }) {
 
 export default function Stats() {
   const { t, lang } = useApp();
+  const confirm = useConfirm();
   const [stats, setStats] = useState<StatsData | null>(null);
   const load = () => api.stats().then(setStats);
   useEffect(() => {
@@ -184,7 +186,13 @@ export default function Stats() {
           type="button"
           className="btn danger"
           onClick={async () => {
-            if (confirm(t("stats.reset_confirm"))) {
+            const ok = await confirm({
+              title: t("stats.reset_confirm"),
+              body: t("stats.reset_body"),
+              action: t("common.reset"),
+              icon: RotateCcw,
+            });
+            if (ok) {
               await api.resetStats();
               load();
             }

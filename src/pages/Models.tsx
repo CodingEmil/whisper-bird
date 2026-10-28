@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Check, Download, LoaderCircle, Trash2, X } from "lucide-react";
 import { api, formatBytes, type DownloadProgress, type ModelKind, type ModelStatus } from "../lib/api";
 import { Card, Dots, Progress, Row, Select, useApp, useEvent } from "../lib/app";
+import { useConfirm } from "../lib/confirm";
 import type { Accelerator } from "../lib/api";
 
 export function useModels() {
@@ -32,6 +33,7 @@ export function ModelRow({
   onChanged: () => void;
 }) {
   const { t, lang } = useApp();
+  const confirm = useConfirm();
   const downloading = model.downloading || progress?.state === "downloading" || progress?.state === "verifying";
   const ratio = progress && progress.total > 0 ? progress.downloaded / progress.total : 0;
   const langs = model.languages.length;
@@ -95,7 +97,12 @@ export function ModelRow({
               title={t("common.delete")}
               aria-label={t("common.delete")}
               onClick={async () => {
-                if (confirm(t("models.delete_confirm"))) {
+                const ok = await confirm({
+                  title: t("models.delete_confirm"),
+                  body: t("models.delete_body", { name: model.name }),
+                  action: t("common.delete"),
+                });
+                if (ok) {
                   await api.deleteModel(model.id);
                   onChanged();
                 }

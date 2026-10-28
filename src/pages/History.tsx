@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ChevronDown, Search, Sparkles, Trash2 } from "lucide-react";
 import { api, formatDuration, type HistoryEntry } from "../lib/api";
 import { Card, CopyButton, Row, Segmented, Select, useApp, useEvent } from "../lib/app";
+import { useConfirm } from "../lib/confirm";
 import { languageName, type TKey } from "../lib/i18n";
 
 const SOURCE_KEY: Record<HistoryEntry["source"], TKey> = {
@@ -75,6 +76,7 @@ function toInputDate(ms: number | null) {
 
 export default function History() {
   const { t, settings: s, update } = useApp();
+  const confirm = useConfirm();
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
   const [search, setSearch] = useState("");
   const [source, setSource] = useState("all");
@@ -196,7 +198,12 @@ export default function History() {
             type="button"
             className="btn danger"
             onClick={async () => {
-              if (confirm(t("hist.clear_confirm"))) {
+              const ok = await confirm({
+                title: t("hist.clear_confirm"),
+                body: t("hist.clear_body"),
+                action: t("hist.clear"),
+              });
+              if (ok) {
                 await api.historyClear();
                 load();
               }

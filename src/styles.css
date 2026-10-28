@@ -474,6 +474,15 @@ input[type="date"],
   background: var(--color-error-wash);
   color: var(--color-error);
 }
+/* Gefüllt nur im Bestätigungsdialog: Dort ist die zerstörerische Aktion die Hauptaktion. */
+.btn.primary.danger {
+  background: var(--color-error);
+  color: var(--color-error-ink);
+}
+.btn.primary.danger:hover {
+  background: var(--color-error-hover);
+  color: var(--color-error-ink);
+}
 
 .toggle {
   position: relative;
@@ -1572,6 +1581,75 @@ button.chip:hover {
   font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
   color: var(--color-muted);
+}
+
+/* ---------- Bestätigung ---------- */
+
+.confirm {
+  width: min(28rem, calc(100vw - 2 * var(--space-lg)));
+  max-width: none;
+  padding: 0;
+  border: 0;
+  /* Unsichtbar, außer bei hohem Kontrast: Dann trägt er den Rand. */
+  outline: var(--rule-hair) solid transparent;
+  border-radius: var(--radius-card);
+  background: var(--color-paper-2);
+  color: var(--color-ink);
+  box-shadow:
+    inset 0 0 0 var(--rule-hair) var(--color-rule),
+    0 var(--space-lg) var(--space-2xl) var(--color-shadow);
+  animation: confirm-in var(--dur-short) var(--ease-out);
+}
+.confirm::backdrop {
+  background: var(--color-scrim);
+  animation: confirm-fade var(--dur-short) var(--ease-out);
+}
+.confirm-inner {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-md);
+  padding: var(--space-lg);
+}
+.confirm-icon {
+  display: grid;
+  place-items: center;
+  width: var(--control);
+  height: var(--control);
+  border-radius: var(--radius-pill);
+  background: var(--color-error-wash);
+  color: var(--color-error);
+}
+/* Die Überschrift steht auf der Mitte des Symbols. */
+.confirm-text {
+  padding-top: var(--space-xs);
+}
+.confirm-title {
+  max-width: none;
+  font-size: var(--text-section);
+  line-height: 1.25;
+}
+.confirm-body {
+  margin-top: var(--space-xs);
+  font-size: var(--text-sm);
+  color: var(--color-ink-2);
+}
+.confirm-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-xs);
+  margin-top: var(--space-xs);
+}
+@keyframes confirm-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--space-xs)) scale(0.97);
+  }
+}
+@keyframes confirm-fade {
+  from {
+    opacity: 0;
+  }
 }
 
 /* ---------- Bewegung ---------- */
