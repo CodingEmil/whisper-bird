@@ -1,4 +1,4 @@
-import { useEffect, useState, type ComponentType } from "react";
+import { Fragment, useEffect, useState, type ComponentType } from "react";
 import {
   BookText,
   Boxes,
@@ -104,29 +104,31 @@ export default function App() {
   const Comp = current.comp;
   return (
     <div className="layout">
-      <nav className="sidebar">
+      <nav className="sidebar" aria-label={t("app.name")}>
         <div className="brand">
           <Bird size={36} />
           <div>
             <div className="brand-name">{t("app.name")}</div>
-            <div className="brand-sub">Windows · lokal</div>
+            <div className="brand-sub">lokal auf Windows</div>
           </div>
         </div>
         {PAGES.map((p) => {
           const Icon = p.icon;
           return (
-            <div key={p.id} style={{ display: "contents" }}>
+            <Fragment key={p.id}>
               {p.sepBefore && <div className="nav-sep" />}
               <button
+                type="button"
                 className="nav-item"
                 aria-current={p.id === page ? "page" : undefined}
+                title={t(p.key)}
                 onClick={() => setPage(p.id)}
               >
-                <Icon size={17} />
-                {t(p.key)}
-                {p.id === "meetings" && meetingActive && <span className="nav-badge" />}
+                <Icon size={18} />
+                <span className="nav-label">{t(p.key)}</span>
+                {p.id === "meetings" && meetingActive && <span className="nav-badge">{t("meet.recording")}</span>}
               </button>
-            </div>
+            </Fragment>
           );
         })}
       </nav>

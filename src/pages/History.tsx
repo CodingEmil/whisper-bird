@@ -22,8 +22,7 @@ export function HistoryItem({ entry, compact, onDelete }: { entry: HistoryEntry;
 
   return (
     <div
-      className="row"
-      style={{ alignItems: "flex-start", cursor: "default", background: flash ? "var(--bd-accent-soft)" : undefined, transition: "background .3s" }}
+      className={`row top entry ${flash ? "flash" : ""}`}
       onDoubleClick={async () => {
         await api.copyText(entry.text);
         setFlash(true);
@@ -32,34 +31,34 @@ export function HistoryItem({ entry, compact, onDelete }: { entry: HistoryEntry;
       title={t("hist.double_click")}
     >
       <div className="row-text">
-        <div className="hstack small muted" style={{ marginBottom: 4, flexWrap: "wrap" }}>
-          <span>{date.toLocaleString(lang, { dateStyle: compact ? undefined : "medium", timeStyle: "short" })}</span>
-          {entry.app && <span>· {entry.app}</span>}
-          {entry.language && <span>· {languageName(entry.language)}</span>}
-          {entry.duration_ms > 0 && <span>· {formatDuration(entry.duration_ms)}</span>}
+        <div className="meta">
+          <time dateTime={date.toISOString()}>{date.toLocaleString(lang, { dateStyle: compact ? undefined : "medium", timeStyle: "short" })}</time>
+          {entry.app && <span className="app">{entry.app}</span>}
+          {entry.language && <span>{languageName(entry.language)}</span>}
+          {entry.duration_ms > 0 && <span className="num">{formatDuration(entry.duration_ms)}</span>}
           <span className={`badge ${entry.source === "enhanced" ? "accent" : ""}`}>
             {entry.source === "enhanced" && <Sparkles size={11} />}
             {t(SOURCE_KEY[entry.source])}
           </span>
         </div>
-        <div className="selectable" style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+        <div className="entry-text selectable">
           {long && !open ? entry.text.slice(0, 280) + " …" : entry.text}
         </div>
         {open && hasRaw && (
-          <div className="small muted selectable" style={{ marginTop: 8, whiteSpace: "pre-wrap" }}>
+          <div className="entry-raw selectable">
             <strong>{t("hist.raw")}:</strong> {entry.raw_text}
           </div>
         )}
       </div>
       <div className="row-control">
         {(long || hasRaw) && (
-          <button className="btn ghost icon" onClick={() => setOpen(!open)}>
+          <button type="button" className="btn ghost icon" aria-expanded={open} aria-label={t("hist.raw")} onClick={() => setOpen(!open)}>
             <ChevronDown size={16} style={{ transform: open ? "rotate(180deg)" : undefined }} />
           </button>
         )}
         <CopyButton text={entry.text} small />
         {onDelete && (
-          <button className="btn ghost icon danger" onClick={onDelete}>
+          <button type="button" className="btn ghost icon danger" aria-label={t("common.delete")} onClick={onDelete}>
             <Trash2 size={15} />
           </button>
         )}
@@ -101,63 +100,65 @@ export default function History() {
       </header>
       <p className="page-sub">{t("hist.double_click")}</p>
 
-      <Card>
-        <div className="card-body vstack" style={{ gap: 12, paddingTop: 16 }}>
-          <div className="hstack">
-            <div style={{ position: "relative", flex: 1 }}>
-              <Search size={15} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--bd-text-subtle)" }} />
-              <input
-                className="input wide"
-                type="search"
-                style={{ paddingLeft: 36 }}
-                placeholder={t("common.search")}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-            <Select
-              value={oldestFirst ? "old" : "new"}
-              options={[
-                ["new", t("hist.newest")],
-                ["old", t("hist.oldest")],
-              ]}
-              onChange={(v) => setOldestFirst(v === "old")}
+      <div className="toolbar" role="search">
+        <div className="hstack">
+          <div className="search">
+            <Search size={15} />
+            <input
+              className="input wide"
+              type="search"
+              aria-label={t("common.search")}
+              placeholder={t("common.search")}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <div className="hstack" style={{ flexWrap: "wrap" }}>
-            <Segmented
-              value={source}
-              options={[
-                ["all", t("hist.all")],
-                ["dictation", t("hist.dictation")],
-                ["enhanced", t("hist.enhanced")],
-                ["edit", t("hist.edit")],
-                ["file", t("hist.file")],
-                ["meeting", t("hist.meeting")],
-              ]}
-              onChange={setSource}
+          <Select
+            value={oldestFirst ? "old" : "new"}
+            label={t("hist.newest")}
+            options={[
+              ["new", t("hist.newest")],
+              ["old", t("hist.oldest")],
+            ]}
+            onChange={(v) => setOldestFirst(v === "old")}
+          />
+        </div>
+        <div className="hstack wrap">
+          <Segmented
+            value={source}
+            label={t("hist.all")}
+            options={[
+              ["all", t("hist.all")],
+              ["dictation", t("hist.dictation")],
+              ["enhanced", t("hist.enhanced")],
+              ["edit", t("hist.edit")],
+              ["file", t("hist.file")],
+              ["meeting", t("hist.meeting")],
+            ]}
+            onChange={setSource}
+          />
+          <div className="spacer" />
+          {/* Zeitraum als Einheit, damit er beim Umbrechen nicht zerfällt. */}
+          <div className="range">
+            <label htmlFor="hist-from">{t("hist.from")}</label>
+            <input
+              id="hist-from"
+              className="input"
+              type="date"
+              value={toInputDate(from)}
+              onChange={(e) => setFrom(e.target.value ? new Date(e.target.value + "T00:00").getTime() : null)}
             />
-            <div className="spacer" />
-            {/* Zeitraum als Einheit, damit er beim Umbrechen nicht zerfällt. */}
-            <div className="hstack">
-              <span className="small muted">{t("hist.from")}</span>
-              <input
-                className="input"
-                type="date"
-                value={toInputDate(from)}
-                onChange={(e) => setFrom(e.target.value ? new Date(e.target.value + "T00:00").getTime() : null)}
-              />
-              <span className="small muted">{t("hist.to")}</span>
-              <input
-                className="input"
-                type="date"
-                value={toInputDate(to)}
-                onChange={(e) => setTo(e.target.value ? new Date(e.target.value + "T23:59:59").getTime() : null)}
-              />
-            </div>
+            <label htmlFor="hist-to">{t("hist.to")}</label>
+            <input
+              id="hist-to"
+              className="input"
+              type="date"
+              value={toInputDate(to)}
+              onChange={(e) => setTo(e.target.value ? new Date(e.target.value + "T23:59:59").getTime() : null)}
+            />
           </div>
         </div>
-      </Card>
+      </div>
 
       <Card>
         {entries.length === 0 ? (
@@ -192,6 +193,7 @@ export default function History() {
         </Row>
         <Row label={t("hist.clear")}>
           <button
+            type="button"
             className="btn danger"
             onClick={async () => {
               if (confirm(t("hist.clear_confirm"))) {

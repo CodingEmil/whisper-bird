@@ -8,3 +8,4 @@ src-tauri/redist/
 src-tauri/ci.conf.json
 test-results/
 playwright-report/
+.hallmark/

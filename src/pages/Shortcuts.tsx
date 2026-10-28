@@ -48,9 +48,9 @@ export default function Shortcuts() {
               label={t(f.label)}
               hint={
                 conflict === f.field ? (
-                  <span style={{ color: "var(--bd-danger)" }}>{t("sc.conflict")}</span>
+                  <span className="error-text">{t("sc.conflict")}</span>
                 ) : err ? (
-                  <span style={{ color: "var(--bd-danger)" }}>{err.message}</span>
+                  <span className="error-text">{err.message}</span>
                 ) : (
                   t(f.hint)
                 )

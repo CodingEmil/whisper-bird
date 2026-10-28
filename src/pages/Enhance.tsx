@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, Download, FlaskConical, LoaderCircle } from "lucide-react";
+import { AlertTriangle, Check, Download, FlaskConical, LoaderCircle } from "lucide-react";
 import { api, formatBytes, type DownloadProgress, type EnhanceMode, type EnhanceProvider, type LlamaStatus } from "../lib/api";
 import { Card, Progress, Row, Segmented, Select, Toggle, useApp, useEvent } from "../lib/app";
 import { ModelRow, useModels } from "./Models";
@@ -69,7 +69,10 @@ export default function Enhance() {
         </Row>
         {s.enhance_mode === "second_shortcut" && !s.shortcut_dictate_enhance && (
           <div className="card-inset">
-            <div className="notice warning">{t("enh.second_missing")}</div>
+            <div className="notice warning">
+              <AlertTriangle size={15} />
+              <div>{t("enh.second_missing")}</div>
+            </div>
           </div>
         )}
         <Row
@@ -101,7 +104,7 @@ export default function Enhance() {
             ) : llamaDownloading ? (
               <LoaderCircle size={16} className="spin muted" />
             ) : (
-              <button className="btn small primary" onClick={() => api.installLlama().then(refreshLlama)}>
+              <button type="button" className="btn small primary" onClick={() => api.installLlama().then(refreshLlama)}>
                 <Download size={14} /> {t("common.download")}
               </button>
             )}
@@ -131,6 +134,7 @@ export default function Enhance() {
           <Row label={t("enh.keep_loaded")} hint={t("enh.keep_loaded_hint")}>
             {llama?.running && (
               <button
+                type="button"
                 className="btn ghost small"
                 onClick={async () => {
                   await api.enhanceStopLocal();
@@ -168,6 +172,7 @@ export default function Enhance() {
             <input
               className="input wide mono"
               type="text"
+              aria-label={t("enh.command")}
               defaultValue={s.enhance_cli_command}
               key={s.enhance_cli_command}
               onBlur={(e) => update({ enhance_cli_command: e.target.value, enhance_cli_preset: "custom" })}
@@ -182,6 +187,7 @@ export default function Enhance() {
             <input
               className="input wide mono"
               type="text"
+              aria-label={t("enh.base_url")}
               defaultValue={s.enhance_api_base_url}
               onBlur={(e) => update({ enhance_api_base_url: e.target.value.trim() })}
             />
@@ -190,6 +196,8 @@ export default function Enhance() {
             <input
               className="input wide mono"
               type="password"
+              autoComplete="off"
+              aria-label={t("enh.api_key")}
               defaultValue={s.enhance_api_key}
               onBlur={(e) => update({ enhance_api_key: e.target.value.trim() })}
             />
@@ -198,6 +206,7 @@ export default function Enhance() {
             <input
               className="input wide mono"
               type="text"
+              aria-label={t("enh.api_model")}
               defaultValue={s.enhance_api_model}
               onBlur={(e) => update({ enhance_api_model: e.target.value.trim() })}
             />
@@ -210,6 +219,7 @@ export default function Enhance() {
         sub={t("enh.prompt_hint")}
         actions={
           <button
+            type="button"
             className="btn ghost small"
             onClick={() => {
               setPrompt("");
@@ -223,6 +233,7 @@ export default function Enhance() {
         <div className="card-body">
           <textarea
             className="textarea mono"
+            aria-label={t("enh.prompt")}
             rows={12}
             value={prompt || defaultPrompt}
             onChange={(e) => setPrompt(e.target.value)}
@@ -231,11 +242,12 @@ export default function Enhance() {
         </div>
         <Row label={t("enh.timeout")}>
           <input
-            className="input"
+            className="input num"
             type="number"
+            aria-label={t("enh.timeout")}
             min={5}
             max={300}
-            style={{ width: 90 }}
+            style={{ width: "6rem" }}
             defaultValue={s.enhance_timeout_sec}
             onBlur={(e) => update({ enhance_timeout_sec: Math.max(5, Number(e.target.value) || 30) })}
           />
@@ -244,15 +256,15 @@ export default function Enhance() {
 
       <Card>
         <Row label={t("enh.test")}>
-          <button className="btn primary" disabled={testing} onClick={runTest}>
+          <button type="button" className="btn primary" disabled={testing} aria-busy={testing} onClick={runTest}>
             {testing ? <LoaderCircle size={15} className="spin" /> : <FlaskConical size={15} />}
             {testing ? t("enh.test_running") : t("common.test")}
           </button>
         </Row>
         {testResult && (
           <div className="card-inset">
-            <div className={`notice ${testResult.ok ? "success" : "danger"}`} style={{ whiteSpace: "pre-wrap" }}>
-              <div className="selectable">
+            <div className={`notice ${testResult.ok ? "success" : "danger"}`}>
+              <div className="selectable pre">
                 {testResult.ok && <strong>{t("enh.test_ok")} </strong>}
                 {testResult.text}
               </div>

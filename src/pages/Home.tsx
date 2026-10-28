@@ -2,18 +2,17 @@ import { useEffect, useState } from "react";
 import { ArrowRight, Boxes, Sparkles } from "lucide-react";
 import { api, formatDuration, type HistoryEntry, type ModelStatus, type Stats } from "../lib/api";
 import { Card, Kbd, useApp, useEvent } from "../lib/app";
+import { Bird } from "../lib/bird";
 import type { PageId } from "../App";
 import { HistoryItem } from "./History";
 
-/** Ersetzt „{shortcut}“ im Text durch die Tasten-Anzeige. */
+/** Ersetzt „{shortcut}“ im Text durch die Tastenkappen. */
 export function WithShortcut({ text, shortcut }: { text: string; shortcut: string }) {
   const [before, after] = text.split("{shortcut}");
   return (
     <>
       {before}
-      <span style={{ color: "var(--bd-text)" }}>
-        <Kbd shortcut={shortcut} />
-      </span>
+      <Kbd shortcut={shortcut} />
       {after}
     </>
   );
@@ -41,7 +40,7 @@ export default function Home({ navigate }: { navigate: (p: PageId) => void }) {
   const enhanceLabel =
     settings.enhance_mode === "off"
       ? t("enh.off")
-      : `${settings.enhance_mode === "always" ? t("enh.always") : t("enh.second")} · ${
+      : `${settings.enhance_mode === "always" ? t("enh.always") : t("enh.second")}, ${
           settings.enhance_provider === "local" ? t("enh.local") : settings.enhance_provider.toUpperCase()
         }`;
 
@@ -52,76 +51,86 @@ export default function Home({ navigate }: { navigate: (p: PageId) => void }) {
       </header>
 
       {!anyAsr && (
-        <div className="notice warning" style={{ marginBottom: 16 }}>
+        <div className="notice warning">
           <Boxes size={18} />
           <div className="spacer">{t("home.no_model")}</div>
-          <button className="btn small primary" onClick={() => navigate("models")}>
+          <button type="button" className="btn small primary" onClick={() => navigate("models")}>
             {t("home.get_model")}
           </button>
         </div>
       )}
 
-      <Card title={t("home.how")}>
-        <ol className="steps">
-          <li>{t("home.step1")}</li>
-          <li>
-            <WithShortcut text={t("home.step2")} shortcut={settings.shortcut_dictate} />
-          </li>
-          <li>{t("home.step3")}</li>
-        </ol>
-      </Card>
+      {/* Das Diktat selbst: der Shortcut als Tastenkappen, daneben der Vogel, darunter das Feld zum Ausprobieren. */}
+      <section className="dictate" aria-labelledby="home-how">
+        <div>
+          <h2 className="card-title" id="home-how">{t("home.how")}</h2>
+          <ol className="steps">
+            <li>{t("home.step1")}</li>
+            <li className="key">
+              <span>
+                <WithShortcut text={t("home.step2")} shortcut={settings.shortcut_dictate} />
+              </span>
+            </li>
+            <li>{t("home.step3")}</li>
+          </ol>
+        </div>
+        <Bird size={128} className="dictate-logo" />
+        <div className="try">
+          <h3 className="try-label">
+            <label htmlFor="home-try">{t("home.try")}</label>
+          </h3>
+          <div className="row-hint">
+            <WithShortcut text={t("home.try_hint")} shortcut={settings.shortcut_dictate} />
+          </div>
+          <textarea id="home-try" className="textarea" rows={3} placeholder={t("home.try_placeholder")} />
+        </div>
+      </section>
 
       <div className="grid-2">
         <Card title={t("home.status")}>
           <div className="row">
             <div className="row-text">
               <div className="row-label">{t("home.model")}</div>
-              <div className="row-hint">
+              <div className="row-hint hstack wrap">
                 {asr?.installed ? asr.name : t("home.no_model")}
-                {loaded && asr?.id === loaded && <span className="badge success" style={{ marginLeft: 8 }}>{t("common.active")}</span>}
+                {loaded && asr?.id === loaded && <span className="badge success">{t("common.active")}</span>}
               </div>
             </div>
-            <button className="btn ghost icon" onClick={() => navigate("models")}>
+            <button type="button" className="btn ghost icon" aria-label={t("nav.models")} onClick={() => navigate("models")}>
               <ArrowRight size={16} />
             </button>
           </div>
           <div className="row">
             <div className="row-text">
-              <div className="row-label">
-                <Sparkles size={14} style={{ verticalAlign: -2, marginRight: 4 }} />
+              <div className="row-label hstack">
+                <Sparkles size={14} className="muted" />
                 {t("home.enhance")}
               </div>
               <div className="row-hint">{enhanceLabel}</div>
             </div>
-            <button className="btn ghost icon" onClick={() => navigate("enhance")}>
+            <button type="button" className="btn ghost icon" aria-label={t("nav.enhance")} onClick={() => navigate("enhance")}>
               <ArrowRight size={16} />
             </button>
           </div>
         </Card>
         <Card title={t("nav.stats")}>
-          <div className="row">
-            <div className="row-text">
-              <div className="stat-value">{(stats?.words ?? 0).toLocaleString(lang)}</div>
-              <div className="row-hint">{t("home.words_total")}</div>
+          <div className="card-body figures" style={{ ["--cols" as string]: 2 }}>
+            <div>
+              <div className="figure-value">{(stats?.words ?? 0).toLocaleString(lang)}</div>
+              <div className="figure-hint">{t("home.words_total")}</div>
             </div>
-            <div className="row-text" style={{ textAlign: "right" }}>
-              <div className="stat-value">{formatDuration(savedMin * 60000)}</div>
-              <div className="row-hint">{t("home.time_saved")}</div>
+            <div>
+              <div className="figure-value">{formatDuration(savedMin * 60000)}</div>
+              <div className="figure-hint">{t("home.time_saved")}</div>
             </div>
           </div>
         </Card>
       </div>
 
-      <Card title={t("home.try")} sub={<WithShortcut text={t("home.try_hint")} shortcut={settings.shortcut_dictate} />}>
-        <div className="card-body">
-          <textarea className="textarea" rows={4} placeholder={t("home.try_placeholder")} />
-        </div>
-      </Card>
-
       <Card
         title={t("home.recent")}
         actions={
-          <button className="btn ghost small" onClick={() => navigate("history")}>
+          <button type="button" className="btn ghost small" onClick={() => navigate("history")}>
             {t("nav.history")} <ArrowRight size={14} />
           </button>
         }

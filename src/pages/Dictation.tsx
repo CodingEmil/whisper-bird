@@ -65,6 +65,7 @@ export default function Dictation() {
             <input
               className="slider"
               type="range"
+              aria-label={t("dict.volume")}
               min={0.05}
               max={1}
               step={0.05}
@@ -72,7 +73,7 @@ export default function Dictation() {
               onChange={(e) => update({ sound_volume: Number(e.target.value) })}
               onMouseUp={() => api.playTestSound()}
             />
-            <button className="btn ghost icon" onClick={() => api.playTestSound()}>
+            <button type="button" className="btn ghost icon" aria-label={t("common.test")} onClick={() => api.playTestSound()}>
               <Volume2 size={16} />
             </button>
           </Row>
@@ -85,13 +86,14 @@ export default function Dictation() {
             <input
               className="slider"
               type="range"
+              aria-label={t("dict.ducking_level")}
               min={0}
               max={0.8}
               step={0.05}
               value={s.ducking_level}
               onChange={(e) => update({ ducking_level: Number(e.target.value) })}
             />
-            <span className="muted small" style={{ width: 36, textAlign: "right" }}>
+            <span className="muted small num" style={{ minWidth: "2.5rem", textAlign: "right" }}>
               {Math.round(s.ducking_level * 100)} %
             </span>
           </Row>

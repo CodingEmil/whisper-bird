@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { ChartColumn, List } from "lucide-react";
 import { api, formatDuration, type Stats as StatsData } from "../lib/api";
 import { Card, Segmented, useApp, useEvent } from "../lib/app";
 import { languageName } from "../lib/i18n";
@@ -7,12 +8,13 @@ function compact(n: number, lang: string) {
   return new Intl.NumberFormat(lang, { notation: n >= 10000 ? "compact" : "standard", maximumFractionDigits: 1 }).format(n);
 }
 
+/** Eine Zahl mit ihrer Beschriftung; Geschwister trennt eine Haarlinie. */
 function Tile({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="card" style={{ margin: 0, padding: "var(--bd-space-4)" }}>
-      <div className="small muted">{label}</div>
-      <div className="stat-value" style={{ marginBlock: "var(--bd-space-1)", fontVariantNumeric: "proportional-nums" }}>{value}</div>
-      {hint && <div className="small muted">{hint}</div>}
+    <div>
+      <div className="figure-label">{label}</div>
+      <div className="figure-value">{value}</div>
+      {hint && <div className="figure-hint">{hint}</div>}
     </div>
   );
 }
@@ -51,23 +53,24 @@ function DailyChart({ days }: { days: StatsData["days"] }) {
       actions={
         <Segmented
           value={table ? "table" : "chart"}
+          label={t("stats.last30")}
           options={[
-            ["chart", "▮▮▮"],
-            ["table", "☰"],
+            ["chart", <><ChartColumn size={15} /><span className="visually-hidden">{t("stats.chart")}</span></>],
+            ["table", <><List size={15} /><span className="visually-hidden">{t("stats.table")}</span></>],
           ]}
           onChange={(v) => setTable(v === "table")}
         />
       }
     >
       {table ? (
-        <div className="card-body" style={{ maxHeight: 260, overflowY: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontVariantNumeric: "tabular-nums" }}>
+        <div className="card-body" style={{ maxHeight: "16rem", overflowY: "auto" }}>
+          <table className="table">
             <tbody>
               {[...series].reverse().map((s) => (
-                <tr key={s.day} style={{ borderTop: "1px solid var(--bd-border)" }}>
-                  <td style={{ padding: "5px 0" }}>{fmtDay(s.day, "long")}</td>
-                  <td style={{ textAlign: "right" }}>{s.words.toLocaleString(lang)}</td>
-                  <td style={{ textAlign: "right", color: "var(--bd-text-subtle)", width: 120 }}>
+                <tr key={s.day}>
+                  <td>{fmtDay(s.day, "long")}</td>
+                  <td>{s.words.toLocaleString(lang)}</td>
+                  <td className="muted">
                     {s.count} × {t("stats.transcriptions")}
                   </td>
                 </tr>
@@ -100,7 +103,7 @@ function DailyChart({ days }: { days: StatsData["days"] }) {
                   style={{ left: `${((hover + 0.5) / series.length) * 100}%` }}
                 >
                   <div className="small muted">{fmtDay(series[hover].day, "long")}</div>
-                  <div style={{ fontWeight: 600 }}>
+                  <div className="num" style={{ fontWeight: "var(--weight-strong)" }}>
                     {series[hover].words.toLocaleString(lang)} {t("stats.words")}
                   </div>
                   <div className="small muted">
@@ -145,13 +148,13 @@ export default function Stats() {
         <p className="page-sub">{t("stats.since", { date: new Date(stats.first_use).toLocaleDateString(lang, { dateStyle: "long" }) })}</p>
       )}
 
-      <div className="grid-4" style={{ marginBottom: 16 }}>
+      <div className="figures">
         <Tile label={t("stats.transcriptions")} value={compact(stats.count, lang)} />
         <Tile label={t("stats.words")} value={compact(stats.words, lang)} />
         <Tile label={t("stats.duration")} value={formatDuration(stats.duration_ms)} />
         <Tile label={t("stats.saved")} value={formatDuration(savedMs)} hint={t("stats.saved_hint")} />
       </div>
-      <div className="grid-4" style={{ marginBottom: 16, gridTemplateColumns: "repeat(5, 1fr)" }}>
+      <div className="figures minor five">
         <Tile label={t("stats.wpm")} value={String(wpm)} />
         <Tile label={t("stats.enhanced")} value={compact(stats.enhanced, lang)} />
         <Tile label={t("stats.edits")} value={compact(stats.edits, lang)} />
@@ -162,8 +165,8 @@ export default function Stats() {
       <DailyChart days={stats.days} />
 
       <Card title={t("stats.languages")}>
-        <div className="card-body vstack" style={{ gap: 10 }}>
-          {stats.languages.length === 0 && <div className="muted">–</div>}
+        <div className="card-body lang-list">
+          {stats.languages.length === 0 && <div className="muted">{t("common.none")}</div>}
           {stats.languages.map((l) => (
             <div key={l.language} className="lang-row" title={`${l.words.toLocaleString(lang)} ${t("stats.words")}`}>
               <span className="lang-name">{languageName(l.language)}</span>
@@ -176,8 +179,9 @@ export default function Stats() {
         </div>
       </Card>
 
-      <div style={{ textAlign: "right" }}>
+      <div className="page-foot">
         <button
+          type="button"
           className="btn danger"
           onClick={async () => {
             if (confirm(t("stats.reset_confirm"))) {

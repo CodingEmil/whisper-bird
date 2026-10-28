@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ChevronLeft, FileText, LoaderCircle, Mic, Monitor, Printer, Sparkles, Square, Trash2, Users } from "lucide-react";
+import { AlertTriangle, ChevronLeft, ChevronRight, FileText, LoaderCircle, Mic, Monitor, Printer, Sparkles, Square, Trash2, Users } from "lucide-react";
 import { save } from "@tauri-apps/plugin-dialog";
 import { api, formatDuration, type Meeting, type MeetingSource, type MeetingSummary, type ModelStatus } from "../lib/api";
 import { Card, CopyButton, Row, Segmented, Toggle, useApp, useEvent } from "../lib/app";
 import { ModelRow, useModels } from "./Models";
 
-// Gedämpfte Pastelltöne passend zu Birdy. Sie unterscheiden nur Sprecher –
+// Pastelltöne aus dem Eisvogel (tokens.css). Sie unterscheiden nur Sprecher:
 // der Name steht immer daneben, die Farbe trägt keine Bedeutung allein.
-const SPEAKER_TINTS = ["#b7d2b3", "#abc9df", "#e9c493", "#e6aaa5", "#cbbfe0", "#d6d2b0"];
+const SPEAKER_TINTS = [1, 2, 3, 4, 5, 6].map((n) => `var(--color-speaker-${n})`);
 
 function speakerName(m: Meeting, i: number) {
   return m.speakers[i] ?? (i >= 0 ? `#${i + 1}` : "");
@@ -19,8 +19,8 @@ function Notes({ text }: { text: string }) {
     <div className="notes selectable">
       {text.split("\n").map((line, i) => {
         const l = line.trimEnd();
-        if (l.startsWith("## ")) return <h4 key={i}>{l.slice(3)}</h4>;
-        if (l.startsWith("# ")) return <h4 key={i}>{l.slice(2)}</h4>;
+        if (l.startsWith("## ")) return <h3 key={i}>{l.slice(3)}</h3>;
+        if (l.startsWith("# ")) return <h3 key={i}>{l.slice(2)}</h3>;
         const task = l.match(/^\s*[-*] \[( |x)\] (.*)$/i);
         if (task)
           return (
@@ -30,7 +30,7 @@ function Notes({ text }: { text: string }) {
             </div>
           );
         if (/^\s*[-*] /.test(l)) return <div key={i} className="note-bullet">{l.replace(/^\s*[-*] /, "")}</div>;
-        if (!l.trim()) return <div key={i} style={{ height: 6 }} />;
+        if (!l.trim()) return <div key={i} className="note-gap" />;
         return <p key={i}>{l}</p>;
       })}
     </div>
@@ -46,15 +46,15 @@ function Transcript({ m }: { m: Meeting }) {
     else blocks.push({ speaker: s.speaker, start: s.start_ms, text: s.text });
   }
   return (
-    <div className="vstack selectable" style={{ gap: 14 }}>
+    <div className="transcript selectable">
       {blocks.map((b, i) => (
         <div key={i} className="transcript-block">
-          <div className="hstack small" style={{ marginBottom: 2 }}>
+          <div className="transcript-head">
             {b.speaker >= 0 && <span className="speaker-dot" style={{ background: SPEAKER_TINTS[b.speaker % SPEAKER_TINTS.length] }} />}
             <strong>{b.speaker >= 0 ? speakerName(m, b.speaker) : ""}</strong>
-            <span className="muted">{formatDuration(b.start)}</span>
+            <span className="muted num">{formatDuration(b.start)}</span>
           </div>
-          <div style={{ whiteSpace: "pre-wrap" }}>{b.text}</div>
+          <div className="pre">{b.text}</div>
         </div>
       ))}
     </div>
@@ -117,28 +117,35 @@ function Detail({ id, onBack }: { id: string; onBack: () => void }) {
     <>
       <div className="print-area">
         <header className="page-header">
-          <button className="btn ghost small no-print" onClick={onBack}>
+          <button type="button" className="btn ghost small no-print" onClick={onBack}>
             <ChevronLeft size={15} /> {t("meet.back")}
           </button>
           <input
             className="title-input"
+            aria-label={t("meet.title")}
             defaultValue={m.title}
             key={m.id}
             onBlur={async (e) => e.target.value.trim() && setM(await api.meetingUpdate(m.id, e.target.value.trim()))}
           />
         </header>
-        <p className="page-sub">
-          {new Date(m.created_at).toLocaleString(lang, { dateStyle: "full", timeStyle: "short" })} · {formatDuration(m.duration_ms)}
+        <p className="page-sub meta">
+          <time dateTime={new Date(m.created_at).toISOString()}>{new Date(m.created_at).toLocaleString(lang, { dateStyle: "full", timeStyle: "short" })}</time>
+          <span className="num">{formatDuration(m.duration_ms)}</span>
         </p>
 
         {m.status === "processing" && (
-          <div className="notice no-print" style={{ marginBottom: 16 }}>
+          <div className="notice no-print" role="status">
             <LoaderCircle size={16} className="spin" />
             <div className="spacer">{t("meet.processing")}</div>
-            {progress !== null && <span>{Math.round(progress * 100)} %</span>}
+            {progress !== null && <span className="num">{Math.round(progress * 100)} %</span>}
           </div>
         )}
-        {m.error && <div className="notice danger" style={{ marginBottom: 16 }}>{m.error}</div>}
+        {m.error && (
+          <div className="notice danger" role="alert">
+            <AlertTriangle size={16} />
+            <div>{m.error}</div>
+          </div>
+        )}
 
         {m.speakers.length > 0 && (
           <Card title={t("meet.speakers")} sub={<span className="no-print">{t("meet.rename_hint")}</span>}>
@@ -149,13 +156,14 @@ function Detail({ id, onBack }: { id: string; onBack: () => void }) {
                     key={i}
                     autoFocus
                     className="input small"
-                    style={{ width: 160 }}
+                    aria-label={t("meet.rename_hint")}
+                    style={{ width: "10rem" }}
                     defaultValue={name}
                     onBlur={(e) => renameSpeaker(i, e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && renameSpeaker(i, e.currentTarget.value)}
                   />
                 ) : (
-                  <button key={i} className="chip" onClick={() => setEditing(i)}>
+                  <button type="button" key={i} className="chip" onClick={() => setEditing(i)}>
                     <span className="speaker-dot" style={{ background: SPEAKER_TINTS[i % SPEAKER_TINTS.length] }} />
                     {name}
                   </button>
@@ -165,9 +173,10 @@ function Detail({ id, onBack }: { id: string; onBack: () => void }) {
           </Card>
         )}
 
-        <div className="hstack no-print" style={{ marginBottom: 12, flexWrap: "wrap" }}>
+        <div className="hstack wrap no-print">
           <Segmented
             value={tab}
+            label={t("meet.transcript")}
             options={[
               ["notes", t("meet.notes")],
               ["transcript", t("meet.transcript")],
@@ -175,12 +184,13 @@ function Detail({ id, onBack }: { id: string; onBack: () => void }) {
             onChange={setTab}
           />
           <div className="spacer" />
-          <button className="btn small" disabled={busy || m.status !== "done"} onClick={generate}>
+          <button type="button" className="btn small" disabled={busy || m.status !== "done"} aria-busy={busy} onClick={generate}>
             {busy ? <LoaderCircle size={14} className="spin" /> : <Sparkles size={14} />}
             {busy ? t("meet.generating") : t("meet.generate_notes")}
           </button>
           <CopyButton text={transcriptText(m)} small />
           <button
+            type="button"
             className="btn small"
             onClick={async () => {
               const path = await save({
@@ -192,11 +202,13 @@ function Detail({ id, onBack }: { id: string; onBack: () => void }) {
           >
             <FileText size={14} /> {t("meet.export_txt")}
           </button>
-          <button className="btn small" onClick={() => window.print()}>
+          <button type="button" className="btn small" onClick={() => window.print()}>
             <Printer size={14} /> {t("meet.export_pdf")}
           </button>
           <button
+            type="button"
             className="btn ghost icon danger"
+            aria-label={t("common.delete")}
             onClick={async () => {
               if (confirm(t("meet.delete_confirm"))) {
                 await api.meetingDelete(m.id);
@@ -207,13 +219,18 @@ function Detail({ id, onBack }: { id: string; onBack: () => void }) {
             <Trash2 size={15} />
           </button>
         </div>
-        {error && <div className="notice danger no-print" style={{ marginBottom: 12 }}>{error}</div>}
+        {error && (
+          <div className="notice danger no-print" role="alert">
+            <AlertTriangle size={16} />
+            <div>{error}</div>
+          </div>
+        )}
 
         {(tab === "notes" || m.notes) && (
           <div className={tab === "notes" ? "" : "print-only"}>
             <Card title={t("meet.notes")}>
               <div className="card-body">
-                {m.notes ? <Notes text={m.notes} /> : <div className="muted">–</div>}
+                {m.notes ? <Notes text={m.notes} /> : <div className="muted">{t("common.none")}</div>}
               </div>
             </Card>
           </div>
@@ -232,10 +249,10 @@ function Detail({ id, onBack }: { id: string; onBack: () => void }) {
 
 function Level({ value, icon }: { value: number; icon: ReactNode }) {
   return (
-    <div className="hstack" style={{ gap: 8, minWidth: 160 }}>
+    <div className="level">
       {icon}
-      <div className="progress" style={{ flex: 1, height: 8 }}>
-        <div style={{ width: `${Math.round(value * 100)}%`, transition: "width .1s" }} />
+      <div className="progress">
+        <div style={{ transform: `scaleX(${Math.max(0, Math.min(1, value))})` }} />
       </div>
     </div>
   );
@@ -252,41 +269,43 @@ function LiveView({ id }: { id: string }) {
   }, [id]);
   useEvent<Meeting>("meeting-update", (x) => x.id === id && setM(x), [id]);
   useEvent<{ id: string; mic: number; system: number; duration_ms: number }>("meeting-level", (l) => l.id === id && setLevels(l), [id]);
-  useEffect(() => endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), [m?.segments.length]);
+  // Keinen Rückgabewert durchreichen: neuere Chromium-Versionen liefern hier ein Promise, kein Cleanup.
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [m?.segments.length]);
 
   return (
-    <Card
-      title={
-        <span className="hstack">
-          <span className="rec-dot" /> {t("meet.recording")} · {formatDuration(levels.duration_ms)}
-        </span>
-      }
-      actions={
-        <button className="btn danger" onClick={() => api.meetingStop()}>
-          <Square size={14} /> {t("meet.stop")}
-        </button>
-      }
-    >
-      <div className="card-body vstack" style={{ gap: 14 }}>
-        <div className="hstack" style={{ gap: 24 }}>
-          {m?.source !== "system" && <Level value={levels.mic} icon={<Mic size={15} className="muted" />} />}
-          {m?.source !== "microphone" && <Level value={levels.system} icon={<Monitor size={15} className="muted" />} />}
+    <>
+      {/* Die laufende Aufnahme trägt das Siegel: Aprikose, wie die Brust des Vogels. */}
+      <section className="live" aria-live="polite">
+        <div>
+          <div className="live-state">{t("meet.recording")}</div>
+          <div className="live-timer">{formatDuration(levels.duration_ms)}</div>
         </div>
-        <div className="live-transcript selectable">
+        <button type="button" className="btn seal" onClick={() => api.meetingStop()}>
+          <Square size={13} fill="currentColor" /> {t("meet.stop")}
+        </button>
+        <div className="levels">
+          {m?.source !== "system" && <Level value={levels.mic} icon={<Mic size={15} />} />}
+          {m?.source !== "microphone" && <Level value={levels.system} icon={<Monitor size={15} />} />}
+        </div>
+      </section>
+      <Card title={t("meet.transcript")}>
+        <div className="card-body live-transcript selectable">
           {!m || m.segments.length === 0 ? (
             <span className="muted">{t("meet.waiting")}</span>
           ) : (
             m.segments.map((s, i) => (
               <p key={i}>
-                <span className="muted small" style={{ marginRight: 8 }}>{formatDuration(s.start_ms)}</span>
+                <time>{formatDuration(s.start_ms)}</time>
                 {s.text}
               </p>
             ))
           )}
           <div ref={endRef} />
         </div>
-      </div>
-    </Card>
+      </Card>
+    </>
   );
 }
 
@@ -347,6 +366,7 @@ export default function Meetings() {
           <div className="row">
             <div className="spacer" />
             <button
+              type="button"
               className="btn primary large"
               onClick={async () => {
                 setError(null);
@@ -362,7 +382,10 @@ export default function Meetings() {
           </div>
           {error && (
             <div className="card-inset">
-              <div className="notice danger">{error}</div>
+              <div className="notice danger" role="alert">
+                <AlertTriangle size={15} />
+                <div>{error}</div>
+              </div>
             </div>
           )}
         </Card>
@@ -375,18 +398,20 @@ export default function Meetings() {
           list
             .filter((m) => m.id !== active)
             .map((m) => (
-              <div key={m.id} className="row clickable" onClick={() => setSelected(m.id)}>
-                <div className="row-text">
-                  <div className="row-label">{m.title}</div>
-                  <div className="row-hint">
-                    {new Date(m.created_at).toLocaleString(lang, { dateStyle: "medium", timeStyle: "short" })} · {formatDuration(m.duration_ms)}
-                    {m.speakers > 0 && ` · ${m.speakers} ${t("meet.speakers")}`}
-                  </div>
-                  {m.preview && <div className="small muted" style={{ marginTop: 4 }}>{m.preview} …</div>}
-                </div>
+              <button type="button" key={m.id} className="row clickable" onClick={() => setSelected(m.id)}>
+                <span className="row-text">
+                  <span className="row-label block">{m.title}</span>
+                  <span className="meta row-hint">
+                    <time dateTime={new Date(m.created_at).toISOString()}>{new Date(m.created_at).toLocaleString(lang, { dateStyle: "medium", timeStyle: "short" })}</time>
+                    <span className="num">{formatDuration(m.duration_ms)}</span>
+                    {m.speakers > 0 && <span>{m.speakers} {t("meet.speakers")}</span>}
+                  </span>
+                  {m.preview && <span className="preview block">{m.preview} …</span>}
+                </span>
                 {m.status === "processing" && <LoaderCircle size={16} className="spin muted" />}
                 {m.status === "error" && <span className="badge danger">{t("common.error")}</span>}
-              </div>
+                <ChevronRight size={16} className="chev" />
+              </button>
             ))
         )}
       </Card>

@@ -23,7 +23,7 @@ function Waveform({ levels }: { levels: number[] }) {
   return (
     <div className="wave">
       {levels.map((l, i) => (
-        <span key={i} style={{ height: `${Math.max(8, l * 100)}%`, opacity: 0.45 + l * 0.55 }} />
+        <span key={i} style={{ transform: `scaleY(${Math.max(0.08, Math.min(1, l))})`, opacity: 0.45 + Math.min(1, l) * 0.55 }} />
       ))}
     </div>
   );
@@ -119,10 +119,10 @@ function Overlay() {
           {state.enhance && <Sparkles size={14} className="enh" />}
           <Waveform levels={levels} />
           <span className="timer">{timer}</span>
-          <button className="pill-btn" title="Esc" onClick={() => api.dictationCancel()}>
+          <button type="button" className="pill-btn" title="Esc" aria-label={t("common.cancel")} onClick={() => api.dictationCancel()}>
             <X size={15} />
           </button>
-          <button className="pill-btn stop" onClick={() => api.dictationToggle(state.enhance)}>
+          <button type="button" className="pill-btn stop" aria-label={t("onb.done")} onClick={() => api.dictationToggle(state.enhance)}>
             <Square size={11} fill="currentColor" />
           </button>
         </>
@@ -133,7 +133,7 @@ function Overlay() {
           <Bird size={30} className="peck" />
           <span className="label">{state.phase === "enhancing" ? t("overlay.enhancing") : t("overlay.transcribing")}</span>
           {state.phase === "enhancing" && <Sparkles size={14} className="enh pulse" />}
-          <button className="pill-btn" title="Esc" onClick={() => api.dictationCancel()}>
+          <button type="button" className="pill-btn" title="Esc" aria-label={t("common.cancel")} onClick={() => api.dictationCancel()}>
             <X size={15} />
           </button>
         </>
@@ -157,7 +157,7 @@ function Overlay() {
           <div className="file-info">
             <span className="file-name">{state.message}</span>
             <div className="file-bar">
-              <div style={{ width: `${Math.round((state.progress ?? 0) * 100)}%` }} />
+              <div style={{ transform: `scaleX(${Math.max(0, Math.min(1, state.progress ?? 0))})` }} />
             </div>
           </div>
           <span className="timer">{Math.round((state.progress ?? 0) * 100)} %</span>

@@ -58,18 +58,18 @@ export default function Files() {
       <p className="page-sub">{t("files.subtitle")}</p>
 
       <div className={`dropzone ${dragging ? "over" : ""}`}>
-        <Upload size={28} />
-        <div style={{ fontWeight: 500 }}>{t("files.drop")}</div>
+        <Upload size={32} />
+        <div className="dropzone-title">{t("files.drop")}</div>
         <div className="small muted">{t("files.drop_hint")}</div>
-        <div className="hstack" style={{ marginTop: 10 }}>
-          <button className="btn primary" onClick={() => api.filesPick()}>
+        <div className="hstack wrap">
+          <button type="button" className="btn primary" onClick={() => api.filesPick()}>
             <FileAudio size={15} /> {t("files.pick")}
           </button>
-          <button className="btn" onClick={() => api.filesPickFolder()}>
+          <button type="button" className="btn" onClick={() => api.filesPickFolder()}>
             <FolderSearch size={15} /> {t("files.pick_folder")}
           </button>
         </div>
-        <div className="small muted" style={{ marginTop: 8 }}>{t("files.formats")}</div>
+        <div className="small muted">{t("files.formats")}</div>
       </div>
 
       <Card>
@@ -96,7 +96,7 @@ export default function Files() {
           title={t("files.queue")}
           actions={
             !running || jobs.some((j) => ["done", "error", "cancelled"].includes(j.status)) ? (
-              <button className="btn ghost small" onClick={() => api.filesClear()}>
+              <button type="button" className="btn ghost small" onClick={() => api.filesClear()}>
                 {t("files.clear")}
               </button>
             ) : undefined
@@ -105,10 +105,10 @@ export default function Files() {
           {jobs.map((j) => {
             const active = ["queued", "decoding", "transcribing"].includes(j.status);
             return (
-              <div className="row" key={j.id} style={{ alignItems: "flex-start" }}>
+              <div className="row top" key={j.id}>
                 <div className="row-text">
                   <div className="hstack">
-                    <span className="row-label" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <span className="row-label ellipsis">
                       {j.name}
                     </span>
                     <span
@@ -120,23 +120,23 @@ export default function Files() {
                     </span>
                   </div>
                   {active && j.status !== "queued" && (
-                    <div style={{ marginTop: 8, maxWidth: 480 }}>
+                    <div className="download">
                       <Progress value={j.progress} />
                     </div>
                   )}
-                  {j.error && <div className="small" style={{ color: "var(--bd-danger)", marginTop: 4 }}>{j.error}</div>}
-                  {j.preview && <div className="small muted selectable" style={{ marginTop: 6 }}>{j.preview} …</div>}
-                  {j.output && <div className="small muted mono" style={{ marginTop: 4 }}>{j.output}</div>}
+                  {j.error && <div className="preview error-text">{j.error}</div>}
+                  {j.preview && <div className="preview selectable">{j.preview} …</div>}
+                  {j.output && <div className="preview mono">{j.output}</div>}
                 </div>
                 <div className="row-control">
                   {j.output && (
-                    <button className="btn ghost small" onClick={() => revealItemInDir(j.output!)}>
+                    <button type="button" className="btn ghost small" onClick={() => revealItemInDir(j.output!)}>
                       <FolderOpen size={14} /> {t("files.show")}
                     </button>
                   )}
                   {j.preview && <CopyButton text={j.preview} small />}
                   {active && (
-                    <button className="btn ghost icon" onClick={() => api.filesCancel(j.id)}>
+                    <button type="button" className="btn ghost icon" aria-label={t("common.cancel")} onClick={() => api.filesCancel(j.id)}>
                       <X size={15} />
                     </button>
                   )}

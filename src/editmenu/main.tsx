@@ -148,9 +148,9 @@ function EditMenu() {
       <div className="em-head">
         <PenLine size={15} />
         <span>{t("nav.edit")}</span>
-        {session.app && <span className="muted">· {session.app}</span>}
+        {session.app && <span className="em-app">{session.app}</span>}
         <div className="spacer" />
-        <button className="em-icon" onClick={() => api.editmenuClose()}>
+        <button type="button" className="em-icon" aria-label={t("common.close")} onClick={() => api.editmenuClose()}>
           <X size={15} />
         </button>
       </div>
@@ -167,6 +167,7 @@ function EditMenu() {
             <input
               ref={inputRef}
               type="text"
+              aria-label={t("editmenu.placeholder")}
               value={input}
               disabled={busy}
               placeholder={listening ? t("editmenu.listening") : t("editmenu.placeholder")}
@@ -174,21 +175,24 @@ function EditMenu() {
               onFocus={() => setActive(-1)}
             />
             <button
+              type="button"
               className={`em-mic ${listening ? "on" : ""}`}
-              style={listening ? { boxShadow: `0 0 0 ${2 + level * 8}px color-mix(in srgb, var(--bd-danger) 35%, transparent)` } : undefined}
+              style={listening ? { boxShadow: `0 0 0 ${2 + level * 8}px color-mix(in oklab, var(--color-accent-2) 35%, transparent)` } : undefined}
               onClick={toggleVoice}
               disabled={busy}
               title="Mic"
+              aria-label="Mic"
+              aria-pressed={listening}
             >
               <Mic size={15} />
             </button>
-            <button className="em-send" disabled={busy || !input.trim()} onClick={() => run(input)}>
+            <button type="button" className="em-send" aria-label={t("editmenu.result")} disabled={busy || !input.trim()} aria-busy={busy} onClick={() => run(input)}>
               {busy ? <LoaderCircle size={15} className="spin" /> : <ArrowUp size={15} />}
             </button>
           </div>
 
           {busy ? (
-            <div className="em-busy">
+            <div className="em-busy" role="status">
               <LoaderCircle size={18} className="spin" /> {t("editmenu.working")}
             </div>
           ) : (
@@ -198,6 +202,7 @@ function EditMenu() {
                 const label = a.id === "translate" && session.translate_target ? `${a.label} → ${session.translate_target}` : a.label;
                 return (
                   <button
+                    type="button"
                     key={a.id}
                     className={`em-item ${active === i ? "active" : ""}`}
                     onMouseEnter={() => setActive(i)}
@@ -210,25 +215,34 @@ function EditMenu() {
               })}
             </div>
           )}
-          {error && <div className="notice danger small" style={{ margin: "0 var(--bd-space-4) var(--bd-space-3)" }}>{error}</div>}
-          <div className="em-foot">{t("editmenu.hint")}</div>
+          {error && <div className="notice danger small em-error" role="alert">{error}</div>}
+          <div className="em-foot">
+            {t("editmenu.hint").split(", ").map((part) => {
+              const [key, ...rest] = part.split(" ");
+              return (
+                <span key={part}>
+                  <kbd>{key}</kbd> {rest.join(" ")}
+                </span>
+              );
+            })}
+          </div>
         </>
       ) : (
         <>
           <div className="em-result-label">{t("editmenu.result")}</div>
-          <textarea className="em-result selectable" value={result} onChange={(e) => setResult(e.target.value)} autoFocus />
+          <textarea className="em-result selectable" aria-label={t("editmenu.result")} value={result} onChange={(e) => setResult(e.target.value)} autoFocus />
           <div className="em-actions">
-            <button className="btn ghost small" onClick={() => setResult(null)}>
+            <button type="button" className="btn ghost small" aria-label={t("meet.back")} onClick={() => setResult(null)}>
               <ArrowLeft size={14} />
             </button>
-            <button className="btn ghost small" onClick={() => run(lastInstruction)}>
+            <button type="button" className="btn ghost small" onClick={() => run(lastInstruction)}>
               <RotateCcw size={14} /> {t("editmenu.retry")}
             </button>
             <div className="spacer" />
-            <button className="btn small" onClick={() => api.editmenuCopy(result)}>
+            <button type="button" className="btn small" onClick={() => api.editmenuCopy(result)}>
               <Copy size={14} /> {t("common.copy")}
             </button>
-            <button className="btn small primary" onClick={() => api.editmenuApply(result)}>
+            <button type="button" className="btn small primary" onClick={() => api.editmenuApply(result)}>
               <Check size={14} /> {session.selection ? t("editmenu.replace") : t("editmenu.insert")}
               <span className="kbd-mini">⏎</span>
             </button>

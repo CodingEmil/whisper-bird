@@ -4,6 +4,7 @@ import type { Snippet } from "../lib/api";
 import { Card, useApp } from "../lib/app";
 
 export function ChipInput({ values, onChange, placeholder }: { values: string[]; onChange: (v: string[]) => void; placeholder: string }) {
+  const { t } = useApp();
   const [draft, setDraft] = useState("");
   const add = () => {
     const parts = draft
@@ -14,17 +15,18 @@ export function ChipInput({ values, onChange, placeholder }: { values: string[];
     setDraft("");
   };
   return (
-    <div className="vstack" style={{ gap: 12 }}>
+    <div className="vstack" style={{ gap: "var(--space-sm)" }}>
       <div className="hstack">
         <input
           className="input wide"
           type="text"
+          aria-label={placeholder}
           value={draft}
           placeholder={placeholder}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && add()}
         />
-        <button className="btn" onClick={add} disabled={!draft.trim()}>
+        <button type="button" className="btn" aria-label={t("common.add")} onClick={add} disabled={!draft.trim()}>
           <Plus size={15} />
         </button>
       </div>
@@ -33,7 +35,7 @@ export function ChipInput({ values, onChange, placeholder }: { values: string[];
           {values.map((v) => (
             <span className="chip" key={v}>
               {v}
-              <button onClick={() => onChange(values.filter((x) => x !== v))}>
+              <button type="button" aria-label={`${t("common.remove")}: ${v}`} onClick={() => onChange(values.filter((x) => x !== v))}>
                 <X size={13} />
               </button>
             </span>
@@ -65,28 +67,20 @@ export default function Words() {
         </div>
       </Card>
 
-      <Card
-        title={t("words.snippets")}
-        sub={t("words.snippets_hint")}
-        actions={
-          <button className="btn small" onClick={() => setSnippets([...s.snippets, { trigger: "", text: "" }])}>
-            <Plus size={14} /> {t("words.add_snippet")}
-          </button>
-        }
-      >
+      <Card title={t("words.snippets")} sub={t("words.snippets_hint")}>
         {s.snippets.map((sn, i) => (
-          <div className="row" key={`${s.snippets.length}-${i}`} style={{ alignItems: "flex-start" }}>
-            <div className="vstack" style={{ flex: "0 0 220px" }}>
-              <span className="small muted">{t("words.trigger")}</span>
+          <div className="row fields" key={`${s.snippets.length}-${i}`}>
+            <label className="field">
+              <span>{t("words.trigger")}</span>
               <input
                 className="input"
                 type="text"
                 defaultValue={sn.trigger}
                 onBlur={(e) => setSnippets(s.snippets.map((x, j) => (j === i ? { ...x, trigger: e.target.value } : x)))}
               />
-            </div>
-            <div className="vstack" style={{ flex: 1 }}>
-              <span className="small muted">{t("words.text")}</span>
+            </label>
+            <label className="field">
+              <span>{t("words.text")}</span>
               <textarea
                 className="textarea"
                 rows={3}
@@ -103,16 +97,22 @@ export default function Words() {
                 }}
                 onBlur={(e) => setSnippets(s.snippets.map((x, j) => (j === i ? { ...x, text: e.target.value } : x)))}
               />
-            </div>
+            </label>
             <button
+              type="button"
               className="btn ghost icon danger"
-              style={{ marginTop: 22 }}
+              aria-label={t("common.delete")}
               onClick={() => setSnippets(s.snippets.filter((_, j) => j !== i))}
             >
               <Trash2 size={15} />
             </button>
           </div>
         ))}
+        <div className="row">
+          <button type="button" className="btn small" onClick={() => setSnippets([...s.snippets, { trigger: "", text: "" }])}>
+            <Plus size={14} /> {t("words.add_snippet")}
+          </button>
+        </div>
       </Card>
     </>
   );

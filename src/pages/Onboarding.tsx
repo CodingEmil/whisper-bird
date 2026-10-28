@@ -29,13 +29,14 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
   return (
     <div className="onboarding">
       <div className="onboarding-card">
-        <div className="hstack" style={{ justifyContent: "space-between", marginBottom: 18 }}>
-          <div className="brand" style={{ padding: 0 }}>
-            <Bird size={44} />
+        <div className="onboarding-top">
+          <div className="brand">
+            <Bird size={56} />
             <span className="brand-name">{t("app.name")}</span>
           </div>
           <Segmented
             value={s.ui_language}
+            label="Sprache, language"
             options={[
               ["de", "Deutsch"],
               ["en", "English"],
@@ -47,36 +48,37 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
         {step === "model" && (
           <>
             <h1 className="page-title">{t("onb.welcome")}</h1>
-            <p className="page-sub" style={{ marginBottom: 20 }}>{t("onb.welcome_text")}</p>
-            <div className="small muted" style={{ marginBottom: 8, fontWeight: 500 }}>{t("onb.choose_model")}</div>
-            <div className="vstack" style={{ gap: 8 }}>
+            <p className="page-sub">{t("onb.welcome_text")}</p>
+            <h2 className="card-title" id="onb-models">{t("onb.choose_model")}</h2>
+            <div className="choices" role="group" aria-labelledby="onb-models">
               {CHOICES.map((id) => {
                 const m = models.find((x) => x.id === id);
                 if (!m) return null;
                 return (
-                  <button key={id} className="choice" aria-pressed={choice === id} onClick={() => setChoice(id)}>
-                    <div className="hstack" style={{ justifyContent: "space-between" }}>
-                      <span className="hstack">
+                  <button type="button" key={id} className="choice" aria-pressed={choice === id} onClick={() => setChoice(id)}>
+                    <span className="choice-head">
+                      <span className="hstack wrap">
                         <strong>{m.name}</strong>
                         {m.recommended && <span className="badge accent">{t("common.recommended")}</span>}
                         {m.installed && <span className="badge success"><Check size={11} /> {t("common.installed")}</span>}
                       </span>
-                      <span className="small muted">{formatBytes(m.size)}</span>
-                    </div>
-                    <div className="small muted" style={{ textAlign: "left", marginTop: 2 }}>
+                      <span className="small muted num">{formatBytes(m.size)}</span>
+                    </span>
+                    <span className="choice-desc block">
                       {lang === "de" ? m.description_de : m.description_en}
-                    </div>
-                    <div className="hstack small muted" style={{ gap: 14, marginTop: 6 }}>
-                      <span className="hstack" style={{ gap: 6 }}>{t("common.speed")} <Dots value={m.speed} /></span>
-                      <span className="hstack" style={{ gap: 6 }}>{t("common.accuracy")} <Dots value={m.accuracy} /></span>
-                    </div>
+                    </span>
+                    <span className="model-meta">
+                      <span>{t("common.speed")} <Dots value={m.speed} /></span>
+                      <span>{t("common.accuracy")} <Dots value={m.accuracy} /></span>
+                    </span>
                   </button>
                 );
               })}
             </div>
-            <div className="hstack" style={{ marginTop: 22, justifyContent: "space-between" }}>
-              <button className="btn ghost" onClick={finish}>{t("onb.skip")}</button>
+            <div className="onboarding-actions">
+              <button type="button" className="btn ghost" onClick={finish}>{t("onb.skip")}</button>
               <button
+                type="button"
                 className="btn primary large"
                 onClick={async () => {
                   await update({ asr_model: choice });
@@ -96,18 +98,17 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
         {step === "download" && model && (
           <>
             <h1 className="page-title">{model.name}</h1>
-            <p className="page-sub" style={{ marginBottom: 22 }}>
+            <p className="page-sub" role="status">
               {p?.state === "verifying" ? t("common.verifying") : t("common.downloading")}
             </p>
             <Progress value={p && p.total ? p.downloaded / p.total : 0} />
-            <div className="small muted" style={{ marginTop: 8 }}>
+            <div className="download-state">
               {formatBytes(p?.downloaded ?? 0)} / {formatBytes(model.size)}
             </div>
             {p?.state === "error" && (
-              <div className="notice danger" style={{ marginTop: 16 }}>
-                {p.error}
-                <div className="spacer" />
-                <button className="btn small" onClick={() => api.downloadModel(choice)}>{t("common.download")}</button>
+              <div className="notice danger" role="alert">
+                <div className="spacer">{p.error}</div>
+                <button type="button" className="btn small" onClick={() => api.downloadModel(choice)}>{t("common.download")}</button>
               </div>
             )}
           </>
@@ -116,12 +117,12 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
         {step === "try" && (
           <>
             <h1 className="page-title">{t("onb.ready")}</h1>
-            <p className="page-sub" style={{ marginBottom: 18 }}>
+            <p className="page-sub">
               <WithShortcut text={t("onb.shortcut_text")} shortcut={s.shortcut_dictate} />
             </p>
-            <textarea className="textarea" rows={5} autoFocus placeholder={t("home.try_placeholder")} />
-            <div className="hstack" style={{ marginTop: 22, justifyContent: "flex-end" }}>
-              <button className="btn primary large" onClick={finish}>
+            <textarea className="textarea" rows={5} autoFocus aria-label={t("home.try")} placeholder={t("home.try_placeholder")} />
+            <div className="onboarding-actions end">
+              <button type="button" className="btn primary large" onClick={finish}>
                 <Check size={17} /> {t("onb.done")}
               </button>
             </div>

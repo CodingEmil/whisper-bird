@@ -37,21 +37,20 @@ export function ModelRow({
   const langs = model.languages.length;
 
   return (
-    <div className="row" style={{ alignItems: "flex-start" }}>
+    <div className="row top">
       <div className="row-text">
-        <div className="hstack" style={{ flexWrap: "wrap" }}>
+        <div className="hstack wrap">
           <span className="row-label">{model.name}</span>
           {model.recommended && <span className="badge accent">{t("common.recommended")}</span>}
-          {selected && model.installed && <span className="badge success">{t("common.active")}</span>}
         </div>
         <div className="row-hint">{lang === "de" ? model.description_de : model.description_en}</div>
-        <div className="hstack small muted" style={{ marginTop: 6, gap: 14, flexWrap: "wrap" }}>
+        <div className="model-meta">
           {model.kind === "asr" && (
             <>
-              <span className="hstack" style={{ gap: 6 }}>
+              <span>
                 {t("common.speed")} <Dots value={model.speed} />
               </span>
-              <span className="hstack" style={{ gap: 6 }}>
+              <span>
                 {t("common.accuracy")} <Dots value={model.accuracy} />
               </span>
               <span>
@@ -59,12 +58,12 @@ export function ModelRow({
               </span>
             </>
           )}
-          <span>{formatBytes(model.size)}</span>
+          <span className="num">{formatBytes(model.size)}</span>
         </div>
         {downloading && (
-          <div style={{ marginTop: 10, maxWidth: 420 }}>
+          <div className="download">
             <Progress value={ratio} />
-            <div className="small muted" style={{ marginTop: 4 }}>
+            <div className="small muted">
               {progress?.state === "verifying"
                 ? t("common.verifying")
                 : `${formatBytes(progress?.downloaded ?? 0)} / ${formatBytes(model.size)}`}
@@ -72,7 +71,7 @@ export function ModelRow({
           </div>
         )}
         {progress?.state === "error" && (
-          <div className="notice danger small" style={{ marginTop: 8 }}>
+          <div className="notice danger small download">
             {progress.error}
           </div>
         )}
@@ -86,13 +85,15 @@ export function ModelRow({
                   <Check size={12} /> {t("common.active")}
                 </span>
               ) : (
-                <button className="btn small" onClick={onSelect}>
+                <button type="button" className="btn small" onClick={onSelect}>
                   {t("common.use")}
                 </button>
               ))}
             <button
+              type="button"
               className="btn ghost icon danger"
               title={t("common.delete")}
+              aria-label={t("common.delete")}
               onClick={async () => {
                 if (confirm(t("models.delete_confirm"))) {
                   await api.deleteModel(model.id);
@@ -104,12 +105,13 @@ export function ModelRow({
             </button>
           </>
         ) : downloading ? (
-          <button className="btn small" onClick={() => api.cancelDownload(model.id)}>
+          <button type="button" className="btn small" onClick={() => api.cancelDownload(model.id)}>
             <X size={14} /> {t("common.cancel")}
           </button>
         ) : (
           <button
-            className="btn small primary"
+            type="button"
+            className="btn small"
             onClick={async () => {
               await api.downloadModel(model.id);
               onChanged();
@@ -156,7 +158,7 @@ export default function Models() {
       </Card>
 
       <Card title={t("models.gpu")}>
-        <Row label={t("adv.accelerator")} hint={devices.join(" · ")}>
+        <Row label={t("adv.accelerator")} hint={devices.join(", ")}>
           <Select<Accelerator>
             value={s.accelerator}
             options={[

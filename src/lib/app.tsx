@@ -1,4 +1,5 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { createContext, Fragment, useCallback, useContext, useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { ChevronDown } from "lucide-react";
 import { api, formatShortcut, on, type Settings, type ShortcutError } from "./api";
 import { ShortcutCapture } from "./shortcut-capture";
 import { translate, type TKey } from "./i18n";
@@ -41,12 +42,17 @@ export function useApp(): AppCtx {
 
 // ---------- Bausteine ----------
 
+/** Die Beschriftung der Zeile, damit Steuerelemente darin ihren Namen tragen. */
+const RowLabel = createContext<string | undefined>(undefined);
+export const useRowLabel = () => useContext(RowLabel);
+
 export function Toggle({ value, onChange, disabled }: { value: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={value}
+      aria-labelledby={useRowLabel()}
       className={`toggle ${value ? "on" : ""}`}
       disabled={disabled}
       onClick={() => onChange(!value)}
@@ -54,62 +60,80 @@ export function Toggle({ value, onChange, disabled }: { value: boolean; onChange
   );
 }
 
+/** Eine Gruppe: Überschrift außen, der Inhalt auf einer getönten Fläche. */
 export function Card({ title, sub, actions, children }: { title?: ReactNode; sub?: ReactNode; actions?: ReactNode; children: ReactNode }) {
   return (
     <section className="card">
       {(title || actions) && (
         <div className="card-header">
           <div>
-            {title && <h3 className="card-title">{title}</h3>}
+            {title && <h2 className="card-title">{title}</h2>}
             {sub && <p className="card-sub">{sub}</p>}
           </div>
           {actions && <div className="hstack">{actions}</div>}
         </div>
       )}
-      {children}
+      <div className="card-well">{children}</div>
     </section>
   );
 }
 
 export function Row({ label, hint, children, stack }: { label: ReactNode; hint?: ReactNode; children?: ReactNode; stack?: boolean }) {
+  const id = useId();
   return (
     <div className={`row ${stack ? "stack" : ""}`}>
       <div className="row-text">
-        <div className="row-label">{label}</div>
+        <div className="row-label" id={id}>{label}</div>
         {hint && <div className="row-hint">{hint}</div>}
       </div>
-      {children && <div className="row-control">{children}</div>}
+      {children && (
+        <div className="row-control">
+          <RowLabel.Provider value={id}>{children}</RowLabel.Provider>
+        </div>
+      )}
     </div>
   );
 }
 
-export function Segmented<T extends string>({ value, options, onChange }: { value: T; options: [T, string][]; onChange: (v: T) => void }) {
+export function Segmented<T extends string>({ value, options, onChange, label }: { value: T; options: [T, ReactNode][]; onChange: (v: T) => void; label?: string }) {
+  const labelledBy = useRowLabel();
   return (
-    <div className="segmented">
-      {options.map(([v, label]) => (
+    <div className="segmented" role="group" aria-labelledby={label ? undefined : labelledBy} aria-label={label}>
+      {options.map(([v, text]) => (
         <button key={v} type="button" aria-pressed={v === value} onClick={() => onChange(v)}>
-          {label}
+          {text}
         </button>
       ))}
     </div>
   );
 }
 
-export function Select<T extends string>({ value, options, onChange, style }: { value: T; options: [T, string][]; onChange: (v: T) => void; style?: CSSProperties }) {
+export function Select<T extends string>({ value, options, onChange, style, label }: { value: T; options: [T, string][]; onChange: (v: T) => void; style?: CSSProperties; label?: string }) {
+  const labelledBy = useRowLabel();
   return (
-    <select className="select" value={value} onChange={(e) => onChange(e.target.value as T)} style={style}>
-      {options.map(([v, label]) => (
-        <option key={v} value={v}>
-          {label}
-        </option>
-      ))}
-    </select>
+    <span className="select-wrap">
+      <select
+        className="select"
+        value={value}
+        onChange={(e) => onChange(e.target.value as T)}
+        style={style}
+        aria-labelledby={label ? undefined : labelledBy}
+        aria-label={label}
+      >
+        {options.map(([v, text]) => (
+          <option key={v} value={v}>
+            {text}
+          </option>
+        ))}
+      </select>
+      <ChevronDown size={15} />
+    </span>
   );
 }
 
 export function Dots({ value, max = 5 }: { value: number; max?: number }) {
   return (
-    <span className="dots">
+    <span className="dots" role="img" aria-label={`${value} / ${max}`}>
       {Array.from({ length: max }, (_, i) => (
         <span key={i} className={i < value ? "on" : ""} />
       ))}
@@ -120,15 +144,30 @@ export function Dots({ value, max = 5 }: { value: number; max?: number }) {
 export function Progress({ value }: { value: number }) {
   return (
     <div className="progress">
-      <div style={{ width: `${Math.max(0, Math.min(1, value)) * 100}%` }} />
+      <div style={{ transform: `scaleX(${Math.max(0, Math.min(1, value))})` }} />
     </div>
   );
 }
 
+/** Tastenkappen für einen formatierten Shortcut („Strg links + Leertaste“); der Text bleibt derselbe. */
+function Keycaps({ text }: { text: string }) {
+  return (
+    <span className="kbd">
+      {text.split(" + ").map((k, i) => (
+        <Fragment key={i}>
+          {i > 0 && " + "}
+          <kbd>{k}</kbd>
+        </Fragment>
+      ))}
+    </span>
+  );
+}
+
+/** Ein Shortcut als Tastenkappen; die Größe folgt dem umgebenden Text. */
 export function Kbd({ shortcut }: { shortcut: string }) {
   const { lang, t } = useApp();
   if (!shortcut) return <span className="muted">{t("common.not_set")}</span>;
-  return <span className="kbd">{formatShortcut(shortcut, lang)}</span>;
+  return <Keycaps text={formatShortcut(shortcut, lang)} />;
 }
 
 interface CaptureSession {
@@ -229,12 +268,12 @@ export function ShortcutInput({ value, onChange, allowClear }: { value: string; 
       <div className="hstack">
         <button
           type="button"
-          className={`shortcut-input ${recording ? "recording" : ""}`}
+          className={`shortcut-input ${recording ? "recording" : ""} ${(recording ? live : value) ? "set" : ""}`}
           aria-pressed={recording}
           onClick={start}
           onBlur={() => { if (active.current) void finish(active.current); }}
         >
-          {recording ? (live ? formatShortcut(live, lang) : t("common.press_keys")) : value ? formatShortcut(value, lang) : t("common.not_set")}
+          {recording ? (live ? <Keycaps text={formatShortcut(live, lang)} /> : t("common.press_keys")) : value ? <Keycaps text={formatShortcut(value, lang)} /> : t("common.not_set")}
         </button>
         {allowClear && value && !recording && (
           <button type="button" className="btn ghost small" onClick={() => onChange("")}>
@@ -242,7 +281,7 @@ export function ShortcutInput({ value, onChange, allowClear }: { value: string; 
           </button>
         )}
       </div>
-      {error && <div className="row-hint" role="alert" style={{ color: "var(--bd-danger)" }}>{error}</div>}
+      {error && <div className="row-hint error-text" role="alert">{error}</div>}
     </div>
   );
 }

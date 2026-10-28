@@ -97,12 +97,12 @@ export default function Advanced() {
           <Toggle value={s.debug_logging} onChange={(debug_logging) => update({ debug_logging })} />
         </Row>
         <Row label={t("adv.open_logs")}>
-          <button className="btn small" onClick={() => api.openDataDir("logs")}>
+          <button type="button" className="btn small" onClick={() => api.openDataDir("logs")}>
             <FolderOpen size={14} /> {t("common.open")}
           </button>
         </Row>
         <Row label={t("adv.open_data")}>
-          <button className="btn small" onClick={() => api.openDataDir("data")}>
+          <button type="button" className="btn small" onClick={() => api.openDataDir("data")}>
             <FolderOpen size={14} /> {t("common.open")}
           </button>
         </Row>
