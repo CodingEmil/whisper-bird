@@ -38,7 +38,7 @@ The spacing scale, the type scale (ratio 1.2), the easings and the durations are
 - A shortcut is always drawn as keycaps, in the recorder as in running text.
 
 ## Motion
-- Character: calm. State only (`--dur-micro`, `--dur-short`), `transform` and `opacity`; no reveal; under reduced motion everything ends at once. The bird pecks while working and sings along to the voice: the beak follows the syllables, the head lifts with the level, and it turns briefly when the voice sets in after a pause. At rest (the bubble, the bird on Home) it preens every 6–14 s for 1.6 s; the sidebar bird stays still.
+- Character: calm. State only (`--dur-micro`, `--dur-short`), `transform` and `opacity`; no reveal; under reduced motion everything ends at once. The bird pecks while working and sings along to the voice (only the beak moves). At rest (the bubble, the bird on Home) it preens every 6–14 s for 1.6 s; the sidebar bird stays still.
 
 ## Exports
 `src/tokens.css` in this project. Tailwind, DTCG or shadcn blocks are added here on request, per `export-formats.md`.

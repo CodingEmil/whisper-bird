@@ -48,7 +48,7 @@ export function Bird({
   // Eindeutige Verlaufs-IDs, falls mehrere Vögel im selben Dokument stehen.
   const id = useId().replace(/[^a-zA-Z0-9]/g, "");
   const ref = (name: string) => `url(#${id}${name})`;
-  const angle = Math.max(0, Math.min(1, open)) * 16;
+  const angle = Math.max(0, Math.min(1, open)) * 12;
   const preening = usePreening(preen);
   return (
     <svg className={`bird ${preening ? "preen" : ""} ${className}`} width={size} height={size} viewBox="0 0 256 256" aria-hidden="true">

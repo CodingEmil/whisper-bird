@@ -126,25 +126,6 @@ svg {
 .bird .mandible {
   transition: transform var(--dur-micro) linear;
 }
-
-/* Beim Sprechen hebt der Vogel den Kopf etwas mit dem Pegel. Drehpunkt an den Füßen. */
-.bird-talk {
-  display: flex;
-  flex-shrink: 0;
-  transform-origin: 43% 88%;
-  transition: transform var(--dur-micro) linear;
-}
-/* Setzt die Stimme ein, dreht er sich kurz zu dir: schmaler wie im Halbprofil, ein kleiner Hüpfer. */
-.bird.turn {
-  transform-origin: 43% 88%;
-  animation: turn 450ms var(--ease-in-out);
-}
-@keyframes turn {
-  40% {
-    transform: translateY(-1px) rotate(-4deg) scaleX(0.82);
-  }
-}
-
 /* Picken als Ladeanzeige: Kopf zweimal nach vorn, dann Pause. Drehpunkt an den Füßen. */
 .bird.peck {
   transform-origin: 43% 88%;
@@ -295,12 +276,8 @@ svg {
 @media (prefers-reduced-motion: reduce) {
   .pill,
   .bird.peck,
-  .bird.turn,
   .pulse {
     animation: none;
-  }
-  .bird-talk {
-    transform: none !important;
   }
   .wave span,
   .file-bar div,

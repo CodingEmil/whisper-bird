@@ -43,20 +43,11 @@ input[type="date"],
   stroke-width: 1.75;
 }
 
-::-webkit-scrollbar {
-  width: 12px;
-  height: 12px;
-}
-::-webkit-scrollbar-thumb {
-  border: 3px solid transparent;
-  border-radius: var(--radius-pill);
-  background: var(--color-paper-4) padding-box;
-}
-::-webkit-scrollbar-thumb:hover {
-  background-color: var(--color-edge);
-}
-::-webkit-scrollbar-track {
-  background: transparent;
+/* Zurückhaltende Scrollbar statt der hellen aus base.css: Daumen und Pfeile nur
+ * wenig heller als das Papier, Spur durchsichtig. Solange scrollbar-color
+ * gesetzt ist, ignoriert die WebView ::-webkit-scrollbar ohnehin. */
+html {
+  scrollbar-color: var(--color-paper-4) transparent;
 }
 
 /* ---------- Shell ---------- */
