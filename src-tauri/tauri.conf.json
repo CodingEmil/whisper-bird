@@ -19,7 +19,6 @@
   "bundle": {
     "active": true,
     "targets": ["nsis"],
-    "license": "MIT",
     "category": "Productivity",
     "shortDescription": "Lokales Diktieren und Transkribieren",
     "icon": [
