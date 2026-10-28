@@ -2,6 +2,7 @@
 # - Manuell: Actions → Build → "Run workflow" (oder `gh workflow run build.yml`)
 #   → Ergebnis als Artifact am Workflow-Lauf.
 # - Tag `vX.Y.Z` pushen → zusätzlich GitHub Release mit beiden Dateien.
+#   `vX.Y.Z-beta.N` wird als Vorabversion veröffentlicht.
 name: Build
 
 on:
@@ -120,7 +121,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" out/* \
+          prerelease=()
+          [[ "$GITHUB_REF_NAME" == *-* ]] && prerelease=(--prerelease)
+          gh release create "$GITHUB_REF_NAME" out/* "${prerelease[@]}" \
             --title "Whisper Bird ${{ steps.cfg.outputs.version }}" \
             --generate-notes \
             --notes "Installer (\`*-setup.exe\`) oder portable Zip. Nicht signiert: Windows SmartScreen zeigt beim ersten Start „Unbekannter Herausgeber“ → Weitere Informationen → Trotzdem ausführen."
