@@ -66,7 +66,7 @@ export default function Home({ navigate }: { navigate: (p: PageId) => void }) {
           <h2 className="card-title" id="home-how">{t("home.how")}</h2>
           <ol className="steps">
             <li>{t("home.step1")}</li>
-            <li className="key">
+            <li>
               <span>
                 <WithShortcut text={t("home.step2")} shortcut={settings.shortcut_dictate} />
               </span>
@@ -79,7 +79,7 @@ export default function Home({ navigate }: { navigate: (p: PageId) => void }) {
           <h3 className="try-label">
             <label htmlFor="home-try">{t("home.try")}</label>
           </h3>
-          <div className="row-hint">
+          <div className="try-hint">
             <WithShortcut text={t("home.try_hint")} shortcut={settings.shortcut_dictate} />
           </div>
           <textarea id="home-try" className="textarea" rows={3} placeholder={t("home.try_placeholder")} />
@@ -114,7 +114,7 @@ export default function Home({ navigate }: { navigate: (p: PageId) => void }) {
           </div>
         </Card>
         <Card title={t("nav.stats")}>
-          <div className="card-body figures" style={{ ["--cols" as string]: 2 }}>
+          <div className="card-body figures compact" style={{ ["--cols" as string]: 2 }}>
             <div>
               <div className="figure-value">{(stats?.words ?? 0).toLocaleString(lang)}</div>
               <div className="figure-hint">{t("home.words_total")}</div>

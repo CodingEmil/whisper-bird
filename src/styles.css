@@ -254,6 +254,10 @@ input[type="date"],
   gap: var(--space-md);
   padding-inline: var(--space-2xs);
 }
+/* Ohne Untertitel steht die Aktion mittig neben der Überschrift. */
+.card-header:not(:has(.card-sub)) {
+  align-items: center;
+}
 .card-title {
   max-width: none;
   margin: 0;
@@ -904,6 +908,13 @@ button.chip:hover {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-lg);
 }
+/* Nebeneinander gleich hohe Flächen; der kürzere Inhalt steht mittig. */
+.grid-2 > .card > .card-well {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+}
 .block {
   display: block;
 }
@@ -991,12 +1002,15 @@ button.chip:hover {
   list-style: none;
   counter-reset: step;
 }
+/* Alle Schritte in einer Größe; die Tastenkappen stehen im Text. */
 .steps li {
   display: grid;
   grid-template-columns: var(--space-lg) minmax(0, 1fr);
   align-items: baseline;
   gap: var(--space-xs);
-  color: var(--color-ink-2);
+  line-height: 1.6;
+  color: var(--color-ink);
+  text-wrap: pretty;
   counter-increment: step;
 }
 .steps li::before {
@@ -1005,15 +1019,6 @@ button.chip:hover {
   font-weight: var(--weight-strong);
   font-variant-numeric: tabular-nums;
   color: var(--color-muted);
-}
-/* Der Schritt mit dem Shortcut trägt die Seite. */
-.steps li.key {
-  padding-block: var(--space-xs);
-  font: var(--display-weight) var(--text-xl) / 1.5 var(--font-display);
-  color: var(--color-ink);
-}
-.steps li.key::before {
-  font-family: var(--font-body);
 }
 .try {
   grid-column: 1 / -1;
@@ -1027,8 +1032,10 @@ button.chip:hover {
   font: var(--weight-strong) var(--text-md) / 1.4 var(--font-body);
   letter-spacing: 0;
 }
-.try .row-hint {
-  margin: 0 0 var(--space-2xs);
+.try-hint {
+  margin-bottom: var(--space-2xs);
+  line-height: 1.6;
+  color: var(--color-ink-2);
 }
 @container (max-width: 40rem) {
   .dictate {
@@ -1077,7 +1084,8 @@ button.chip:hover {
   padding: 0 var(--space-lg) 0 0;
   border-left: 0;
 }
-.figures.minor .figure-value {
+.figures.minor .figure-value,
+.figures.compact .figure-value {
   font-size: var(--text-xl);
 }
 .figure-hint {
