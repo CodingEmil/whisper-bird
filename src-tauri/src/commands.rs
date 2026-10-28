@@ -268,13 +268,13 @@ pub fn play_test_sound() {
 // ---------- Shortcuts ----------
 
 #[tauri::command]
-pub fn start_shortcut_capture() {
-    state().hotkeys.start_capture();
+pub fn start_shortcut_capture(session: String) {
+    state().hotkeys.start_capture(session);
 }
 
 #[tauri::command]
-pub fn stop_shortcut_capture() {
-    state().hotkeys.stop_capture();
+pub fn stop_shortcut_capture(session: String) {
+    state().hotkeys.stop_capture(&session);
 }
 
 // ---------- Diktat & Overlay ----------

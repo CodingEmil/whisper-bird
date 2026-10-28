@@ -4,13 +4,12 @@
 use crate::dictation::Mode;
 use crate::settings::Activation;
 use crate::state::state;
-use handy_keys::{Hotkey, HotkeyId, HotkeyManager, HotkeyState, Key, KeyboardListener, Modifiers};
+use handy_keys::{Hotkey, HotkeyId, HotkeyManager, HotkeyState, Key, Modifiers};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 use std::time::{Duration, Instant};
-use tauri::Emitter;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Action {
@@ -29,9 +28,10 @@ pub struct Hotkeys {
     manager: Mutex<Option<HotkeyManager>>,
     ids: Mutex<HashMap<HotkeyId, Action>>,
     cancel_id: Mutex<Option<HotkeyId>>,
+    cancel_active: AtomicBool,
     pressed_at: Mutex<HashMap<HotkeyId, Instant>>,
     suspended: AtomicBool,
-    capture_stop: Mutex<Option<Arc<AtomicBool>>>,
+    capture_session: Mutex<Option<String>>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -71,10 +71,21 @@ impl Hotkeys {
             return errors;
         };
         let mut ids = self.ids.lock().unwrap();
-        for id in ids.keys() {
-            let _ = manager.unregister(*id);
+        for (id, action) in ids.iter() {
+            if *action != Action::Cancel {
+                let _ = manager.unregister(*id);
+            }
         }
-        ids.clear();
+        // Die separate Escape-Registrierung einer laufenden Aufnahme behalten.
+        ids.retain(|_, action| *action == Action::Cancel);
+        // Während der Auswahl dürfen registrierte Kombis keine Eingabe blockieren.
+        if self.suspended.load(Ordering::SeqCst) {
+            if let Some(id) = self.cancel_id.lock().unwrap().take() {
+                let _ = manager.unregister(id);
+                ids.remove(&id);
+            }
+            return errors;
+        }
         let entries = [
             ("shortcut_dictate", &s.shortcut_dictate, Action::Dictate),
             ("shortcut_dictate_enhance", &s.shortcut_dictate_enhance, Action::DictateEnhance),
@@ -100,12 +111,27 @@ impl Hotkeys {
                 }
             }
         }
+        // Falls während einer laufenden Aufnahme ausgewählt wurde, Escape
+        // nach dem Ende der Auswahl wiederherstellen.
+        if self.cancel_active.load(Ordering::SeqCst) {
+            let mut cancel = self.cancel_id.lock().unwrap();
+            if cancel.is_none() {
+                if let Ok(hk) = Hotkey::new(Modifiers::empty(), Key::Escape) {
+                    if let Ok(id) = manager.register(hk) {
+                        *cancel = Some(id);
+                        ids.insert(id, Action::Cancel);
+                    }
+                }
+            }
+        }
         errors
     }
 
     /// Escape zum Abbrechen nur registrieren, solange etwas läuft – sonst
     /// würde Escape in allen Apps blockiert.
     pub fn set_cancel_active(&self, active: bool) {
+        self.cancel_active.store(active, Ordering::SeqCst);
+        let active = active && !self.suspended.load(Ordering::SeqCst);
         let guard = self.manager.lock().unwrap();
         let Some(manager) = guard.as_ref() else { return };
         let mut cancel = self.cancel_id.lock().unwrap();
@@ -186,85 +212,32 @@ impl Hotkeys {
         }
     }
 
-    /// Nimmt eine neue Tastenkombination auf (für die Einstellungen).
-    /// Sendet "shortcut-capture" mit { display, done, cancelled }.
-    pub fn start_capture(&'static self) {
-        self.stop_capture();
-        self.suspended.store(true, Ordering::SeqCst);
-        let stop = Arc::new(AtomicBool::new(false));
-        *self.capture_stop.lock().unwrap() = Some(stop.clone());
+    /// Die Oberfläche nimmt ihre eigenen Tastaturereignisse auf. Hier nur die
+    /// globalen Aktionen pausieren, damit sie die Tasten nicht verschlucken.
+    /// Kein zweiter, kurzlebiger Windows-Hook und keine Event-Listener-Rennen.
+    pub fn start_capture(&'static self, session: String) {
+        {
+            let mut active = self.capture_session.lock().unwrap();
+            *active = Some(session.clone());
+            self.suspended.store(true, Ordering::SeqCst);
+            self.pressed_at.lock().unwrap().clear();
+            self.apply();
+        }
+        // Failsafe, falls die WebView während der Aufnahme beendet/neu geladen
+        // wird und ihr Cleanup nicht mehr beim Backend ankommt.
         std::thread::spawn(move || {
-            let result = capture_loop(&stop);
-            self.suspended.store(false, Ordering::SeqCst);
-            let app = &state().app;
-            match result {
-                Ok(Some(hk)) => {
-                    let _ = app.emit("shortcut-capture", CaptureEvent::done(hk.to_string()));
-                }
-                Ok(None) => {
-                    let _ = app.emit("shortcut-capture", CaptureEvent::cancelled());
-                }
-                Err(e) => {
-                    log::error!("Shortcut-Aufnahme fehlgeschlagen: {e}");
-                    let _ = app.emit("shortcut-capture", CaptureEvent::cancelled());
-                }
-            }
+            std::thread::sleep(Duration::from_secs(30));
+            self.stop_capture(&session);
         });
     }
 
-    pub fn stop_capture(&self) {
-        if let Some(stop) = self.capture_stop.lock().unwrap().take() {
-            stop.store(true, Ordering::SeqCst);
+    pub fn stop_capture(&self, session: &str) {
+        let mut active = self.capture_session.lock().unwrap();
+        // Ein verspätetes Cleanup des vorigen Feldes darf das neue nicht beenden.
+        if active.as_deref() == Some(session) {
+            *active = None;
+            self.suspended.store(false, Ordering::SeqCst);
+            self.apply();
         }
     }
-}
-
-#[derive(Clone, Serialize)]
-struct CaptureEvent {
-    display: String,
-    done: bool,
-    cancelled: bool,
-}
-
-impl CaptureEvent {
-    fn live(display: String) -> Self {
-        Self { display, done: false, cancelled: false }
-    }
-    fn done(display: String) -> Self {
-        Self { display, done: true, cancelled: false }
-    }
-    fn cancelled() -> Self {
-        Self { display: String::new(), done: false, cancelled: true }
-    }
-}
-
-/// Liest Tastendrücke, bis eine Kombination steht:
-/// - Modifier + Taste → sofort fertig
-/// - nur Modifier (z. B. Strg rechts) → fertig beim Loslassen
-/// - Escape allein → abbrechen
-fn capture_loop(stop: &AtomicBool) -> handy_keys::Result<Option<Hotkey>> {
-    let listener = KeyboardListener::new()?;
-    let app = &state().app;
-    let started = Instant::now();
-    let mut peak = Modifiers::empty();
-    while !stop.load(Ordering::SeqCst) && started.elapsed() < Duration::from_secs(20) {
-        let Some(ev) = listener.recv_timeout(Duration::from_millis(50)).ok() else {
-            continue;
-        };
-        if ev.is_key_down {
-            if ev.key == Some(Key::Escape) && ev.modifiers.is_empty() {
-                return Ok(None);
-            }
-            if let Some(key) = ev.key {
-                return Ok(Some(Hotkey::new(ev.modifiers, key)?));
-            }
-            peak |= ev.modifiers;
-            if let Ok(hk) = Hotkey::new(peak, None) {
-                let _ = app.emit("shortcut-capture", CaptureEvent::live(hk.to_string()));
-            }
-        } else if ev.modifiers.is_empty() && !peak.is_empty() {
-            return Ok(Some(Hotkey::new(peak, None)?));
-        }
-    }
-    Ok(None)
 }

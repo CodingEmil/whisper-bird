@@ -103,7 +103,7 @@ const de = {
   "models.gpu": "Beschleunigung",
 
   "sc.title": "Shortcuts",
-  "sc.subtitle": "Globale Tastenkürzel funktionieren in jeder App. Auch einzelne Modifier wie „Strg rechts“ sind möglich.",
+  "sc.subtitle": "Zum Ändern anklicken, gewünschte Tasten gedrückt halten und wieder loslassen. Zwei Tasten wie „Strg + Leertaste“, einzelne Funktionstasten oder Modifier wie „Strg rechts“ sind möglich.",
   "sc.dictate": "Diktat",
   "sc.dictate_hint": "Startet und stoppt die Aufnahme.",
   "sc.dictate_enhance": "Diktat + Enhance",
@@ -114,6 +114,9 @@ const de = {
   "sc.meeting_hint": "Optional.",
   "sc.cancel_hint": "Während einer Aufnahme bricht Esc ab – es wird nichts eingefügt.",
   "sc.conflict": "Dieser Shortcut ist schon vergeben.",
+  "sc.capture_failed": "Shortcut konnte nicht gesetzt werden: {error}",
+  "sc.capture_timeout": "Keine vollständige Tastenkombination erkannt. Bitte erneut anklicken.",
+  "sc.capture_unsupported": "Diese Taste wird nicht unterstützt. Bitte eine andere wählen.",
 
   "enh.title": "Enhance",
   "enh.subtitle": "Verbessert Diktate per KI: Grammatik, Zeichensetzung, Füllwörter, Selbstkorrekturen und app-gerechte Formatierung (z. B. E-Mails mit Absätzen und Gruß).",
@@ -435,7 +438,7 @@ const en: Record<Key, string> = {
   "models.gpu": "Acceleration",
 
   "sc.title": "Shortcuts",
-  "sc.subtitle": "Global shortcuts work in every app. Single modifiers like “Right Ctrl” are possible too.",
+  "sc.subtitle": "Click to change, hold the desired keys together, then release them. Two-key shortcuts like “Ctrl + Space”, single function keys or modifiers like “Right Ctrl” are supported.",
   "sc.dictate": "Dictation",
   "sc.dictate_hint": "Starts and stops recording.",
   "sc.dictate_enhance": "Dictation + Enhance",
@@ -446,6 +449,9 @@ const en: Record<Key, string> = {
   "sc.meeting_hint": "Optional.",
   "sc.cancel_hint": "While recording, Esc cancels – nothing is inserted.",
   "sc.conflict": "This shortcut is already in use.",
+  "sc.capture_failed": "Could not set shortcut: {error}",
+  "sc.capture_timeout": "No complete shortcut detected. Click to try again.",
+  "sc.capture_unsupported": "This key is not supported. Please choose another.",
 
   "enh.title": "Enhance",
   "enh.subtitle": "Improves dictations with AI: grammar, punctuation, filler words, self-corrections and app-aware formatting (e.g. emails with paragraphs and a sign-off).",

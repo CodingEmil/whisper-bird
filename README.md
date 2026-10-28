@@ -31,7 +31,10 @@ bun run tauri build     # Installer (NSIS) unter src-tauri\target\release\bundle
 ```
 
 Der erste Build dauert rund 10 Minuten (transcribe.cpp mit Vulkan-Shadern).
-Tests: `cd src-tauri; cargo test --lib`.
+Rust-Tests: `cd src-tauri; cargo test --lib`.
+UI-Regressionstests: einmalig `bun x playwright install chromium`, danach `bun run test`.
+Die UI-Tests mocken die native Schnittstelle und ändern keine App-Einstellungen.
+Alternativ mit installiertem Chrome: `$env:PLAYWRIGHT_CHANNEL = 'chrome'; bun run test`.
 
 Icons neu erzeugen: `bun run icons`.
 

@@ -1,5 +1,6 @@
-import { createContext, useCallback, useContext, useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { api, formatShortcut, on, type Settings, type ShortcutError } from "./api";
+import { ShortcutCapture } from "./shortcut-capture";
 import { translate, type TKey } from "./i18n";
 
 interface AppCtx {
@@ -130,43 +131,118 @@ export function Kbd({ shortcut }: { shortcut: string }) {
   return <span className="kbd">{formatShortcut(shortcut, lang)}</span>;
 }
 
-/** Nimmt eine Tastenkombination auf (Backend-Listener, damit auch Win-Tasten gehen). */
-export function ShortcutInput({ value, onChange, allowClear }: { value: string; onChange: (v: string) => void; allowClear?: boolean }) {
+interface CaptureSession {
+  id: string;
+  keys: ShortcutCapture;
+  ready: Promise<void>;
+  timer: number;
+}
+
+const CAPTURE_START = "whisper-shortcut-capture-start";
+
+/** Foreground keyboard events capture the keys; the backend only pauses global actions. */
+export function ShortcutInput({ value, onChange, allowClear }: { value: string; onChange: (v: string) => void | Promise<void>; allowClear?: boolean }) {
   const { t, lang } = useApp();
   const [recording, setRecording] = useState(false);
   const [live, setLive] = useState("");
+  const [error, setError] = useState("");
+  const active = useRef<CaptureSession | null>(null);
+  const mounted = useRef(false);
+  const latest = useRef({ t, onChange });
+  latest.current = { t, onChange };
+
+  const finish = useCallback(async (session: CaptureSession, shortcut?: string, message = "") => {
+    if (active.current !== session) return;
+    active.current = null; // Keyup, blur and timeout must not save/stop twice.
+    window.clearTimeout(session.timer);
+    if (mounted.current) {
+      setRecording(false);
+      setLive("");
+      setError(message);
+    }
+    try {
+      // A fast keystroke can complete before the pause command returns.
+      await session.ready;
+      await api.stopShortcutCapture(session.id);
+      if (shortcut !== undefined) await latest.current.onChange(shortcut);
+    } catch (e) {
+      if (mounted.current) setError(latest.current.t("sc.capture_failed", { error: String(e) }));
+      void api.stopShortcutCapture(session.id).catch(() => {});
+    }
+  }, []);
 
   useEffect(() => {
-    if (!recording) return;
-    const off = on<{ display: string; done: boolean; cancelled: boolean }>("shortcut-capture", (e) => {
-      if (e.done) {
-        setRecording(false);
-        setLive("");
-        onChange(e.display);
-      } else if (e.cancelled) {
-        setRecording(false);
-        setLive("");
-      } else {
-        setLive(e.display);
-      }
-    });
-    api.startShortcutCapture();
-    return () => {
-      off();
-      api.stopShortcutCapture();
+    mounted.current = true;
+    const cancel = () => { if (active.current) void finish(active.current); };
+    const otherCapture = (e: Event) => {
+      if (active.current && (e as CustomEvent<string>).detail !== active.current.id) cancel();
     };
-  }, [recording]);
+    const keyboard = (e: KeyboardEvent) => {
+      const session = active.current;
+      if (!session) return;
+      // In particular, do not let Space/Enter click the capture button again.
+      e.preventDefault();
+      e.stopPropagation();
+      const update = session.keys.handle(e, e.type === "keydown");
+      if (!update) return;
+      if (update.kind === "cancel") void finish(session);
+      else if (update.kind === "unsupported") setError(latest.current.t("sc.capture_unsupported"));
+      else if (update.kind === "done") void finish(session, update.shortcut);
+      else {
+        setLive(update.shortcut);
+        setError("");
+      }
+    };
+    window.addEventListener("keydown", keyboard, true);
+    window.addEventListener("keyup", keyboard, true);
+    window.addEventListener("blur", cancel);
+    window.addEventListener(CAPTURE_START, otherCapture);
+    return () => {
+      mounted.current = false;
+      cancel();
+      window.removeEventListener("keydown", keyboard, true);
+      window.removeEventListener("keyup", keyboard, true);
+      window.removeEventListener("blur", cancel);
+      window.removeEventListener(CAPTURE_START, otherCapture);
+    };
+  }, [finish]);
+
+  const start = () => {
+    if (active.current) { void finish(active.current); return; }
+    const session: CaptureSession = {
+      id: crypto.randomUUID(), keys: new ShortcutCapture(), ready: Promise.resolve(), timer: 0,
+    };
+    active.current = session;
+    window.dispatchEvent(new CustomEvent(CAPTURE_START, { detail: session.id }));
+    setRecording(true);
+    setLive("");
+    setError("");
+    session.ready = api.startShortcutCapture(session.id);
+    session.ready.catch(() => { void finish(session); });
+    session.timer = window.setTimeout(() => {
+      void finish(session, undefined, latest.current.t("sc.capture_timeout"));
+    }, 20_000);
+  };
 
   return (
-    <div className="hstack">
-      <button type="button" className={`shortcut-input ${recording ? "recording" : ""}`} onClick={() => setRecording(!recording)}>
-        {recording ? (live ? formatShortcut(live, lang) : t("common.press_keys")) : value ? formatShortcut(value, lang) : t("common.not_set")}
-      </button>
-      {allowClear && value && !recording && (
-        <button type="button" className="btn ghost small" onClick={() => onChange("")}>
-          {t("common.remove")}
+    <div>
+      <div className="hstack">
+        <button
+          type="button"
+          className={`shortcut-input ${recording ? "recording" : ""}`}
+          aria-pressed={recording}
+          onClick={start}
+          onBlur={() => { if (active.current) void finish(active.current); }}
+        >
+          {recording ? (live ? formatShortcut(live, lang) : t("common.press_keys")) : value ? formatShortcut(value, lang) : t("common.not_set")}
         </button>
-      )}
+        {allowClear && value && !recording && (
+          <button type="button" className="btn ghost small" onClick={() => onChange("")}>
+            {t("common.remove")}
+          </button>
+        )}
+      </div>
+      {error && <div className="row-hint" role="alert" style={{ color: "var(--bd-danger)" }}>{error}</div>}
     </div>
   );
 }
