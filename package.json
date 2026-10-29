@@ -8,6 +8,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "playwright test",
+    "test:all": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test.ps1",
+    "test:quick": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test.ps1 -Quick",
     "tauri": "tauri",
     "icons": "node scripts/make-icons.mjs && tauri icon src-tauri/icons/source.png",
     "notices": "node scripts/notices.mjs"

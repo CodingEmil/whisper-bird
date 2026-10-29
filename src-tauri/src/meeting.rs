@@ -1,7 +1,7 @@
 //! Meeting-Modus: Mikrofon und/oder System-Audio aufnehmen, live transkribieren,
 //! danach nach Sprechern aufteilen (Sortformer) und Notizen erzeugen.
 
-use crate::asr::AsrOptions;
+use crate::asr::{Asr, AsrOptions};
 use crate::audio::{self, loopback::Loopback, mic::MicRecording, sounds};
 use crate::catalog;
 use crate::history::NewEntry;
@@ -9,7 +9,8 @@ use crate::i18n::t;
 use crate::settings::MeetingSource;
 use crate::state::state;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::ops::Range;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -274,10 +275,14 @@ fn run(mut m: Meeting, stop: &AtomicBool) -> Result<(), Failure> {
 
     let started = Instant::now();
     let mut full: Vec<f32> = Vec::with_capacity(SR * 60 * 30);
-    let mut committed = 0usize;
-    let mut last_check = Instant::now();
+    let mut live = LiveCutter::default();
     let mut last_save = Instant::now();
     let language = (s.language != "auto").then(|| s.language.clone());
+    let opts = AsrOptions {
+        language: language.clone(),
+        vocabulary: &s.custom_words,
+        cancel: None,
+    };
 
     loop {
         let stopping = stop.load(Ordering::SeqCst);
@@ -309,13 +314,7 @@ fn run(mut m: Meeting, stop: &AtomicBool) -> Result<(), Failure> {
         } else {
             Vec::new()
         };
-        let mut mixed = vec![0.0f32; n];
-        for (i, v) in mixed.iter_mut().enumerate() {
-            let a = mic_chunk.get(i).copied().unwrap_or(0.0);
-            let b = sys_chunk.get(i).copied().unwrap_or(0.0);
-            *v = (a + b).clamp(-1.0, 1.0);
-        }
-        full.extend_from_slice(&mixed);
+        full.extend(mix(&mic_chunk, &sys_chunk, n));
         m.duration_ms = (full.len() / 16) as i64;
         let _ = st.app.emit(
             "meeting-level",
@@ -328,67 +327,14 @@ fn run(mut m: Meeting, stop: &AtomicBool) -> Result<(), Failure> {
         );
 
         // --- Live-Transkription an Sprechpausen ---
-        let pending = full.len() - committed;
-        if stopping || (pending >= SR * 2 && last_check.elapsed() >= Duration::from_millis(1500)) {
-            last_check = Instant::now();
-            let slice = &full[committed..];
-            let segments = st.asr.speech_segments(slice, 0).unwrap_or_default();
-            let quiet_tail = SR * 7 / 10;
-            let cut = if stopping {
-                slice.len()
-            } else if segments.is_empty() {
-                // Nur Stille: bis auf die letzte Sekunde überspringen.
-                if slice.len() > SR * 10 {
-                    committed = full.len() - SR;
+        if let Some(range) = live.next(&full, &st.asr, stopping) {
+            match live_segment(&st.asr, &full, range, &opts, s.remove_fillers) {
+                Ok(Some(seg)) => {
+                    m.segments.push(seg);
+                    emit_update(&m);
                 }
-                0
-            } else if let Some(last_end) = segments
-                .iter()
-                .map(|s| s.1)
-                .filter(|&e| e + quiet_tail <= slice.len())
-                .last()
-            {
-                if slice.len() > SR * 25 || last_end >= SR * 3 {
-                    last_end
-                } else {
-                    0
-                }
-            } else if slice.len() > SR * 25 {
-                slice.len() - SR / 2
-            } else {
-                0
-            };
-            if cut > 0 {
-                let chunk = &full[committed..committed + cut];
-                let has_speech = !st.asr.speech_segments(chunk, 0).unwrap_or_default().is_empty();
-                if has_speech {
-                    match st.asr.transcribe(
-                        chunk,
-                        &AsrOptions {
-                            language: language.clone(),
-                            vocabulary: &s.custom_words,
-                            cancel: None,
-                        },
-                    ) {
-                        Ok(r) => {
-                            let text = crate::text::apply_custom_words(
-                                &crate::text::clean(&r.text, s.remove_fillers),
-                                &s.custom_words,
-                            );
-                            if !text.is_empty() {
-                                m.segments.push(Segment {
-                                    start_ms: (committed / 16) as i64,
-                                    end_ms: ((committed + cut) / 16) as i64,
-                                    speaker: -1,
-                                    text,
-                                });
-                                emit_update(&m);
-                            }
-                        }
-                        Err(e) => log::warn!("Live-Transkription fehlgeschlagen: {e:#}"),
-                    }
-                }
-                committed += cut;
+                Ok(None) => {}
+                Err(e) => log::warn!("Live-Transkription fehlgeschlagen: {e:#}"),
             }
         }
         if last_save.elapsed() > Duration::from_secs(15) {
@@ -418,27 +364,11 @@ fn run(mut m: Meeting, stop: &AtomicBool) -> Result<(), Failure> {
     let progress = move |p: f32| {
         let _ = state().app.emit("meeting-progress", (meeting_id.clone(), p));
     };
-    match diarize_and_retranscribe(&full, language.clone(), &progress) {
-        Ok(Some(segments)) if !segments.is_empty() => {
-            let speakers = segments.iter().map(|s| s.speaker).max().unwrap_or(0) + 1;
-            m.speakers = (1..=speakers).map(|i| format!("{} {i}", t(&s.ui_language, "speaker"))).collect();
-            m.segments = segments;
-            m.diarized = true;
-        }
-        Ok(_) => {
-            for seg in &mut m.segments {
-                seg.speaker = 0;
-            }
-            m.speakers = vec![format!("{} 1", t(&s.ui_language, "speaker"))];
-        }
-        Err(e) => {
-            log::warn!("Sprechererkennung fehlgeschlagen: {e:#}");
-            for seg in &mut m.segments {
-                seg.speaker = 0;
-            }
-            m.speakers = vec![format!("{} 1", t(&s.ui_language, "speaker"))];
-        }
-    }
+    let diarized = match st.model_file(catalog::DIARIZE_MODEL).filter(|p| p.exists()) {
+        Some(model) => diarize_and_retranscribe(&st.asr, &model, &full, &opts, s.remove_fillers, &progress),
+        None => Ok(None),
+    };
+    assign_speakers(&mut m, diarized, &s.ui_language);
     m.status = "done".into();
     let _ = save(&m);
     emit_update(&m);
@@ -473,23 +403,131 @@ fn run(mut m: Meeting, stop: &AtomicBool) -> Result<(), Failure> {
     Ok(())
 }
 
-/// Sprecherwechsel erkennen und jede Sprecherpassage neu transkribieren.
-/// `Ok(None)`, wenn kein Diarisierungsmodell installiert ist.
-fn diarize_and_retranscribe(
+/// Mischt Mikrofon und System-Audio zu einem Block von `n` Samples.
+pub fn mix(mic: &[f32], sys: &[f32], n: usize) -> Vec<f32> {
+    (0..n)
+        .map(|i| {
+            let a = mic.get(i).copied().unwrap_or(0.0);
+            let b = sys.get(i).copied().unwrap_or(0.0);
+            (a + b).clamp(-1.0, 1.0)
+        })
+        .collect()
+}
+
+/// Zerlegt das laufende Meeting-Audio an Sprechpausen in Abschnitte fürs Live-Transkript.
+#[derive(Default)]
+pub struct LiveCutter {
+    /// Bis hierhin ist das Audio transkribiert oder als Stille übersprungen.
+    committed: usize,
+    /// Audiolänge bei der letzten Prüfung.
+    checked: usize,
+}
+
+impl LiveCutter {
+    /// Nächster abgeschlossener Abschnitt von `full` als Samplebereich. Geprüft wird
+    /// höchstens alle 1,5 s Audio; beim Stoppen kommt der ganze Rest.
+    pub fn next(&mut self, full: &[f32], asr: &Asr, stopping: bool) -> Option<Range<usize>> {
+        let pending = full.len() - self.committed;
+        if !stopping && (pending < SR * 2 || full.len() - self.checked < SR * 3 / 2) {
+            return None;
+        }
+        self.checked = full.len();
+        let slice = &full[self.committed..];
+        let segments = asr.speech_segments(slice, 0).unwrap_or_default();
+        let quiet_tail = SR * 7 / 10;
+        let cut = if stopping {
+            slice.len()
+        } else if segments.is_empty() {
+            // Nur Stille: bis auf die letzte Sekunde überspringen.
+            if slice.len() > SR * 10 {
+                self.committed = full.len() - SR;
+            }
+            0
+        } else if let Some(last_end) = segments
+            .iter()
+            .map(|s| s.1)
+            .filter(|&e| e + quiet_tail <= slice.len())
+            .last()
+        {
+            if slice.len() > SR * 25 || last_end >= SR * 3 {
+                last_end
+            } else {
+                0
+            }
+        } else if slice.len() > SR * 25 {
+            slice.len() - SR / 2
+        } else {
+            0
+        };
+        if cut == 0 {
+            return None;
+        }
+        let range = self.committed..self.committed + cut;
+        self.committed += cut;
+        Some(range)
+    }
+}
+
+/// Transkribiert einen Live-Abschnitt. `None`, wenn darin niemand spricht.
+pub fn live_segment(
+    asr: &Asr,
+    full: &[f32],
+    range: Range<usize>,
+    opts: &AsrOptions,
+    remove_fillers: bool,
+) -> anyhow::Result<Option<Segment>> {
+    let chunk = &full[range.clone()];
+    if asr.speech_segments(chunk, 0).unwrap_or_default().is_empty() {
+        return Ok(None);
+    }
+    let text = tidy(&asr.transcribe(chunk, opts)?.text, opts, remove_fillers);
+    Ok((!text.is_empty()).then(|| Segment {
+        start_ms: (range.start / 16) as i64,
+        end_ms: (range.end / 16) as i64,
+        speaker: -1,
+        text,
+    }))
+}
+
+fn tidy(text: &str, opts: &AsrOptions, remove_fillers: bool) -> String {
+    crate::text::apply_custom_words(&crate::text::clean(text, remove_fillers), opts.vocabulary)
+}
+
+/// Übernimmt das Ergebnis der Sprechererkennung – oder ordnet alles einem Sprecher zu.
+pub fn assign_speakers(m: &mut Meeting, diarized: anyhow::Result<Option<Vec<Segment>>>, ui_language: &str) {
+    let name = |i: i32| format!("{} {i}", t(ui_language, "speaker"));
+    match diarized {
+        Ok(Some(segments)) if !segments.is_empty() => {
+            let speakers = segments.iter().map(|s| s.speaker).max().unwrap_or(0) + 1;
+            m.speakers = (1..=speakers).map(name).collect();
+            m.segments = segments;
+            m.diarized = true;
+            return;
+        }
+        Ok(_) => {}
+        Err(e) => log::warn!("Sprechererkennung fehlgeschlagen: {e:#}"),
+    }
+    for seg in &mut m.segments {
+        seg.speaker = 0;
+    }
+    m.speakers = vec![name(1)];
+}
+
+/// Sprecherwechsel mit dem Diarisierungsmodell `model` erkennen und jede
+/// Sprecherpassage neu transkribieren. `Ok(None)`, wenn das Audio zu kurz ist.
+pub fn diarize_and_retranscribe(
+    asr: &Asr,
+    model: &Path,
     pcm: &[f32],
-    language: Option<String>,
+    opts: &AsrOptions,
+    remove_fillers: bool,
     progress: &dyn Fn(f32),
 ) -> anyhow::Result<Option<Vec<Segment>>> {
-    let st = state();
-    let s = st.settings();
-    let Some(path) = st.model_file(catalog::DIARIZE_MODEL).filter(|p| p.exists()) else {
-        return Ok(None);
-    };
     if pcm.len() < SR * 2 {
         return Ok(None);
     }
     progress(0.0);
-    let model = transcribe_cpp::Model::load(&path)?;
+    let model = transcribe_cpp::Model::load(model)?;
     let mut session = model.diarize_session()?;
     let turns = session.run(pcm, &transcribe_cpp::DiarizeOptions::default())?;
     drop(session);
@@ -511,17 +549,9 @@ fn diarize_and_retranscribe(
         if b <= a + SR / 4 {
             continue;
         }
-        let parts = st.asr.transcribe_long(
-            &pcm[a..b],
-            &AsrOptions {
-                language: language.clone(),
-                vocabulary: &s.custom_words,
-                cancel: None,
-            },
-            &mut |_| {},
-        )?;
+        let parts = asr.transcribe_long(&pcm[a..b], opts, &mut |_| {})?;
         let text = parts.iter().map(|p| p.text.trim()).collect::<Vec<_>>().join(" ");
-        let text = crate::text::apply_custom_words(&crate::text::clean(&text, s.remove_fillers), &s.custom_words);
+        let text = tidy(&text, opts, remove_fillers);
         if !text.is_empty() {
             out.push(Segment {
                 start_ms: t0,
@@ -627,7 +657,56 @@ pub async fn generate_notes(id: String) -> Result<Meeting, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::clean_turns;
+    use super::*;
+
+    fn meeting(segments: Vec<Segment>) -> Meeting {
+        Meeting {
+            id: "test".into(),
+            title: "Test".into(),
+            created_at: 0,
+            duration_ms: 0,
+            source: MeetingSource::Microphone,
+            status: "processing".into(),
+            segments,
+            speakers: Vec::new(),
+            notes: None,
+            error: None,
+            diarized: false,
+        }
+    }
+
+    fn seg(start_ms: i64, speaker: i32, text: &str) -> Segment {
+        Segment { start_ms, end_ms: start_ms + 1000, speaker, text: text.into() }
+    }
+
+    #[test]
+    fn mischen_fuellt_auf_und_begrenzt() {
+        assert_eq!(mix(&[0.5, 0.9], &[0.25, 0.5, -2.0], 4), vec![0.75, 1.0, -1.0, 0.0]);
+        assert_eq!(mix(&[0.1, 0.2, 0.3], &[], 2), vec![0.1, 0.2]);
+    }
+
+    #[test]
+    fn ohne_sprechererkennung_spricht_einer() {
+        let mut m = meeting(vec![seg(0, -1, "Hallo."), seg(2000, -1, "Weiter.")]);
+        assign_speakers(&mut m, Ok(None), "de");
+        assert!(!m.diarized);
+        assert_eq!(m.speakers, vec!["Sprecher 1"]);
+        assert!(m.segments.iter().all(|s| s.speaker == 0));
+
+        let mut m = meeting(vec![seg(0, -1, "Hallo.")]);
+        assign_speakers(&mut m, Err(anyhow::anyhow!("kaputt")), "en");
+        assert_eq!(m.speakers, vec!["Speaker 1"]);
+    }
+
+    #[test]
+    fn transkript_fasst_sprecher_zusammen() {
+        let mut m = meeting(Vec::new());
+        let diarized = vec![seg(0, 0, "Guten Tag."), seg(1000, 0, "Los geht's."), seg(2000, 1, "Hallo.")];
+        assign_speakers(&mut m, Ok(Some(diarized)), "de");
+        assert!(m.diarized);
+        assert_eq!(m.speakers, vec!["Sprecher 1", "Sprecher 2"]);
+        assert_eq!(transcript_text(&m), "Sprecher 1: Guten Tag. Los geht's.\n\nSprecher 2: Hallo.");
+    }
 
     #[test]
     fn merges_and_renumbers_turns() {

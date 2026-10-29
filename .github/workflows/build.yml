@@ -97,6 +97,31 @@ jobs:
       - name: Frontend-Abhängigkeiten
         run: bun install --frozen-lockfile
 
+      # Schnelle Tests vor dem Build: Ist einer rot, entstehen weder Installer noch Release.
+      # Die End-to-End-Tests mit echten Modellen (scripts/test.ps1) laufen nur lokal.
+      - name: TypeScript
+        run: bun x tsc --noEmit
+
+      - name: UI-Tests
+        shell: pwsh
+        run: |
+          bun x playwright install chromium
+          if ($LASTEXITCODE -ne 0) { throw "Playwright-Browser ließ sich nicht installieren" }
+          bun run test
+
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: ui-test-results
+          path: test-results/
+          if-no-files-found: ignore
+
+      # --release: dieselben Abhängigkeiten wie der Build danach, transcribe.cpp
+      # wird also nur einmal kompiliert.
+      - name: Rust-Unit-Tests
+        working-directory: src-tauri
+        run: cargo test --release --lib
+
       - name: Build
         shell: pwsh
         run: bun run tauri build --config "$env:GITHUB_WORKSPACE\src-tauri\ci.conf.json"

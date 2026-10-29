@@ -4,6 +4,8 @@ mod catalog;
 mod commands;
 mod dictation;
 mod downloads;
+#[cfg(test)]
+mod e2e;
 mod editmenu;
 mod enhance;
 mod files;

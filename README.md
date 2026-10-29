@@ -31,17 +31,52 @@ bun run tauri build     # Installer (NSIS) unter src-tauri\target\release\bundle
 ```
 
 Der erste Build dauert rund 10 Minuten (transcribe.cpp mit Vulkan-Shadern).
-Rust-Tests: `cd src-tauri; cargo test --lib`.
-UI-Regressionstests: einmalig `bun x playwright install chromium`, danach `bun run test`.
-Die UI-Tests mocken die native Schnittstelle und ändern keine App-Einstellungen.
-Alternativ mit installiertem Chrome: `$env:PLAYWRIGHT_CHANNEL = 'chrome'; bun run test`.
 
 Icons neu erzeugen: `bun run icons`.
+
+## Testen
+
+Nach jedem Patch einmal alles durchlaufen lassen:
+
+```powershell
+.\scripts\test.ps1            # alles außer Hardware (bun run test:all)
+.\scripts\test.ps1 -Quick     # ohne Modelle, rund eine Minute (bun run test:quick)
+.\scripts\test.ps1 -Hardware  # zusätzlich Mikrofon und System-Audio
+```
+
+| Schritt | Was geprüft wird |
+|---|---|
+| TypeScript | `tsc --noEmit` |
+| Rust-Unit-Tests | `cargo test --lib`: Textbereinigung, Sprecher-Glättung, Mischen, Updates, Einstellungen … |
+| UI-Tests | Playwright mit gemockter nativer Schnittstelle (einmalig `bun x playwright install chromium`) |
+| End-to-End | Echte Modelle und echtes Audio, siehe unten |
+| Hardware | Mikrofon nimmt 2 s auf; System-Audio: die Kennedy-Rede wird abgespielt, mitgeschnitten und erkannt |
+
+Die End-to-End-Tests (`src-tauri/src/e2e/`) arbeiten mit echtem Audio:
+
+- **Diktat:** Kennedy-Rede (whisper.cpp-Beispiel) wird wortgenau erkannt (Wortfehlerrate ≤ 10 %).
+- **Datei:** deutscher Wikipedia-Artikel (Ogg, 2:34 min) wird in Abschnitten transkribiert, mit Fortschritt und automatischer Spracherkennung.
+- **VAD:** Pausen bleiben frei, Rauschen gilt nicht als Sprache.
+- **Meeting mit vier Personen:** 5 Minuten aus dem AMI-Meeting ES2004a laufen wie vom Mikrofon ein (Live-Transkript), danach Sprechererkennung und Neutranskription wie in der App. Verglichen wird mit der AMI-Referenz, wer wann spricht: 4 Sprecher, Zuordnung und DER.
+- **Deutscher Dialog:** zwei Sprecher aus der Gesprochenen Wikipedia im Wechsel, mit exakt bekannten Sprecherwechseln. Geprüft wird auch, ob die Texte beim richtigen Sprecher landen.
+
+Der erste Lauf lädt Testaudio und Sortformer (~180 MB, mit Prüfsumme) nach
+`src-tauri\target\test-fixtures`. Bereits installierte Modelle der App werden nur
+gelesen, Einstellungen und Verlauf bleiben unberührt. Am Ende stehen die Kennzahlen
+neben denen des letzten Laufs, so fällt eine schleichende Verschlechterung auf.
+Anderes Spracherkennungsmodell testen: `$env:WHISPER_ISLAND_TEST_ASR = 'whisper-small'`.
+UI-Tests mit installiertem Chrome statt Chromium: `$env:PLAYWRIGHT_CHANNEL = 'chrome'`.
+
+Lizenzen des Testaudios: AMI Meeting Corpus (CC BY 4.0), Gesprochene Wikipedia
+„Bamberger Bierkrieg“ (CC BY-SA 4.0) und „Magic 8 Ball“ (CC BY-SA 3.0),
+Kennedy-Rede gemeinfrei. Die Dateien werden nicht mit ausgeliefert.
 
 ## Exe per GitHub Actions
 
 Der Workflow `.github/workflows/build.yml` baut auf `windows-latest` den
-NSIS-Installer und eine portable Zip (Exe + VC++-Runtime-DLLs):
+NSIS-Installer und eine portable Zip (Exe + VC++-Runtime-DLLs). Vorher laufen
+TypeScript-Prüfung, UI-Tests und Rust-Unit-Tests; schlägt einer fehl, gibt es
+weder Dateien noch Release. Die End-to-End-Tests mit Modellen laufen nur lokal.
 
 - **Manuell:** `gh workflow run build.yml` (oder Actions → Build → *Run workflow*),
   die Dateien hängen danach als Artifact am Lauf (`gh run download`).
