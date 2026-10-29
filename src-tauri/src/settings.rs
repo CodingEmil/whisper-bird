@@ -153,6 +153,10 @@ pub struct Settings {
     // System
     pub autostart: bool,
     pub start_hidden: bool,
+    /// Beim Start und täglich auf GitHub nach einer neuen Version suchen.
+    pub check_updates: bool,
+    /// Version, deren Update-Hinweis zuletzt gezeigt wurde; daran erkennt die App ein Update.
+    pub last_version: String,
     pub debug_logging: bool,
 }
 
@@ -283,6 +287,8 @@ impl Default for Settings {
 
             autostart: false,
             start_hidden: false,
+            check_updates: true,
+            last_version: String::new(),
             debug_logging: false,
         }
     }

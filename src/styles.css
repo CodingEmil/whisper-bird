@@ -165,6 +165,59 @@ html {
   font-size: var(--text-xs);
   line-height: 1.6;
 }
+/* In der breiten Leiste nennt die Fußzeile das Update; die Plakette braucht erst die schmale. */
+.nav-badge.update {
+  display: none;
+}
+
+/* Version und Update-Stand: eine kleine Zeile unter der Fußgruppe. */
+.nav-version {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs);
+  margin-top: var(--space-2xs);
+  padding: 0 var(--space-sm);
+  font-size: var(--text-xs);
+  line-height: 1.4;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+.nav-version-check {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  /* Größere Trefferfläche, ohne die Zeile höher zu machen. */
+  margin: -6px calc(-1 * var(--space-xs)) -6px 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-muted);
+  transition:
+    background-color var(--dur-micro) var(--ease-out),
+    color var(--dur-micro) var(--ease-out);
+}
+.nav-version-check:hover:not(:disabled) {
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+.nav-version-check:disabled {
+  cursor: progress;
+}
+.nav-version-update {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-accent);
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.nav-version-update:hover {
+  color: var(--color-accent-hover);
+}
 
 .content {
   min-width: 0;
@@ -222,6 +275,13 @@ html {
     overflow: hidden;
     color: transparent;
     background: var(--color-accent-2);
+  }
+  .nav-badge.update {
+    display: block;
+    background: var(--color-accent);
+  }
+  .nav-version {
+    display: none;
   }
   .page {
     padding-inline: var(--space-lg);
@@ -1656,6 +1716,18 @@ button.chip:hover {
   justify-content: flex-end;
   gap: var(--space-xs);
   margin-top: var(--space-xs);
+}
+/* Nach einem Update: der Vogel statt eines Symbols, darunter die Neuerungen. */
+.update-notes {
+  display: grid;
+  gap: var(--space-2xs);
+  max-height: 40vh;
+  margin: var(--space-xs) 0 0;
+  padding-left: 1.1em;
+  overflow-y: auto;
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  color: var(--color-ink-2);
 }
 @keyframes confirm-in {
   from {

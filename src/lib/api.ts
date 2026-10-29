@@ -66,6 +66,8 @@ export interface Settings {
   file_output_dir: string | null;
   autostart: boolean;
   start_hidden: boolean;
+  check_updates: boolean;
+  last_version: string;
   debug_logging: boolean;
 }
 
@@ -156,6 +158,26 @@ export interface AppInfo {
   log_dir: string;
   devices: string[];
   asr_loaded: string | null;
+}
+
+export interface UpdateStatus {
+  current: string;
+  /** Neuere Version, falls es eine gibt. */
+  latest: string | null;
+  url: string | null;
+  /** Die App kann sich selbst aktualisieren (Installer bzw. portable Zip); im Entwicklungsbuild nie. */
+  installable: boolean;
+  /** Im Hintergrund heruntergeladen und geprüft. */
+  ready: boolean;
+  /** „Installieren“ wurde gedrückt; es geht los, sobald der Download fertig ist. */
+  installing: boolean;
+  checking: boolean;
+  checked_at: number | null;
+  error: string | null;
+  /** Seit dem letzten Start kam ein Update; einmal melden. */
+  just_updated: boolean;
+  /** Neuerungen der laufenden Version. */
+  notes: string[];
 }
 
 export interface FileJob {
@@ -256,6 +278,11 @@ export const api = {
   finishOnboarding: () => invoke<void>("finish_onboarding"),
   openDataDir: (which: "data" | "logs" | "models" | "meetings") => invoke<void>("open_data_dir", { which }),
   openNotices: () => invoke<void>("open_notices"),
+  updateStatus: () => invoke<UpdateStatus>("update_status"),
+  updateCheck: () => invoke<UpdateStatus>("update_check"),
+  updateInstall: () => invoke<void>("update_install"),
+  updateOpenPage: () => invoke<void>("update_open_page"),
+  updateNoticeSeen: () => invoke<void>("update_notice_seen"),
 };
 
 export function on<T>(event: string, handler: (payload: T) => void): () => void {

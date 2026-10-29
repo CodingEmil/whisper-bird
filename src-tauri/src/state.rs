@@ -31,6 +31,7 @@ pub struct AppState {
     pub meeting: crate::meeting::Meetings,
     pub files: crate::files::FileJobs,
     pub editmenu: crate::editmenu::EditMenu,
+    pub updates: crate::updates::Updates,
 }
 
 static STATE: OnceLock<Arc<AppState>> = OnceLock::new();
@@ -46,6 +47,7 @@ pub fn init(app: AppHandle, dirs: Dirs) -> anyhow::Result<&'static Arc<AppState>
     let settings = settings::load(&dirs.data.join("settings.json"));
     let history = History::open(&dirs.data.join("history.db"))?;
     let enhancer = Enhancer::new(dirs.llama.clone(), dirs.models.clone());
+    let updates = crate::updates::Updates::new(app.package_info().version.clone());
     let state = Arc::new(AppState {
         app,
         settings: RwLock::new(settings),
@@ -58,6 +60,7 @@ pub fn init(app: AppHandle, dirs: Dirs) -> anyhow::Result<&'static Arc<AppState>
         meeting: Default::default(),
         files: Default::default(),
         editmenu: Default::default(),
+        updates,
         dirs,
     });
     let _ = STATE.set(state);

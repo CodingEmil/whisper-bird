@@ -1,8 +1,9 @@
 import { Fragment, useEffect, useState } from "react";
-import { ChevronDown, FileText } from "lucide-react";
-import { api, type AppInfo } from "../lib/api";
-import { Card, Row, useApp } from "../lib/app";
+import { ChevronDown, Download, ExternalLink, FileText, RefreshCw } from "lucide-react";
+import { api, formatBytes, type AppInfo } from "../lib/api";
+import { Card, Progress, Row, useApp } from "../lib/app";
 import type { TKey } from "../lib/i18n";
+import { useUpdate } from "../lib/update";
 
 const FAQ: [TKey, TKey][] = [
   ["help.q1", "help.a1"],
@@ -12,6 +13,86 @@ const FAQ: [TKey, TKey][] = [
   ["help.q5", "help.a5"],
   ["help.q6", "help.a6"],
 ];
+
+/** Version, Stand der Update-Suche und, wenn es eine neue Version gibt, deren Installation. */
+function VersionRow() {
+  const { t, lang } = useApp();
+  const { status, progress } = useUpdate();
+  const [error, setError] = useState("");
+  if (!status) return null;
+
+  // Das Update lädt schon im Hintergrund, sobald es gefunden ist.
+  const loading = progress?.state === "downloading" || progress?.state === "verifying";
+  const starting = status.installing && !loading;
+  const failed = progress?.state === "error" ? progress.error : error;
+  const text = status.checking
+    ? t("update.checking")
+    : status.latest
+      ? t(status.installable ? "update.ready" : "update.ready_manual", { version: status.latest })
+      : status.error
+        ? t("update.failed_detail", { error: status.error })
+        : status.checked_at
+          ? t("update.checked", { time: new Date(status.checked_at).toLocaleString(lang, { dateStyle: "medium", timeStyle: "short" }) })
+          : null;
+
+  const install = async () => {
+    setError("");
+    try {
+      await api.updateInstall();
+    } catch (e) {
+      setError(String(e));
+    }
+  };
+
+  return (
+    <Row
+      label={t("help.version")}
+      hint={
+        <>
+          {text}
+          {loading && progress && (
+            <div className="download">
+              <Progress value={progress.total > 0 ? progress.downloaded / progress.total : 0} />
+              <div className="small muted">
+                {progress.state === "verifying"
+                  ? t("common.verifying")
+                  : `${formatBytes(progress.downloaded)} / ${formatBytes(progress.total)}`}
+              </div>
+            </div>
+          )}
+          {starting && <div>{t("update.starting")}</div>}
+          {failed && <div className="error-text" role="alert">{failed}</div>}
+        </>
+      }
+    >
+      <span className="mono">{status.current}</span>
+      {!status.latest ? (
+        <button type="button" className="btn small" disabled={status.checking} onClick={() => void api.updateCheck()}>
+          <RefreshCw size={14} className={status.checking ? "spin" : undefined} /> {t("update.check")}
+        </button>
+      ) : status.installable ? (
+        <>
+          <button type="button" className="btn ghost small" onClick={() => api.updateOpenPage()}>
+            {t("update.notes")}
+          </button>
+          <button
+            type="button"
+            className="btn primary small"
+            disabled={status.installing}
+            aria-busy={status.installing}
+            onClick={install}
+          >
+            <Download size={14} /> {t("update.install")}
+          </button>
+        </>
+      ) : (
+        <button type="button" className="btn primary small" onClick={() => api.updateOpenPage()}>
+          <ExternalLink size={14} /> {t("update.download")}
+        </button>
+      )}
+    </Row>
+  );
+}
 
 export default function Help() {
   const { t } = useApp();
@@ -47,9 +128,7 @@ export default function Help() {
       </Card>
 
       <Card>
-        <Row label={t("help.version")}>
-          <span className="mono">{info?.version}</span>
-        </Row>
+        <VersionRow />
         <Row label={t("help.devices")} hint={info?.devices.join(", ") || "CPU"} />
         <Row label={t("help.credits")} hint={t("help.credits_text")} />
         <Row label={t("help.notices")} hint={t("help.notices_hint")}>

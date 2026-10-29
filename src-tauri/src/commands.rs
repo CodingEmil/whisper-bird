@@ -9,6 +9,7 @@ use crate::hotkeys::ShortcutError;
 use crate::meeting::{Meeting, MeetingSummary};
 use crate::settings::{EditAction, Settings};
 use crate::state::state;
+use crate::updates::UpdateStatus;
 use serde::Serialize;
 use std::path::PathBuf;
 use tauri::{AppHandle, Emitter};
@@ -80,6 +81,9 @@ pub fn set_settings(app: AppHandle, patch: serde_json::Value) -> CmdResult<Setti
     if old.show_floating_icon != new.show_floating_icon || old.overlay_position != new.overlay_position {
         crate::overlay::refresh();
     }
+    if !old.check_updates && new.check_updates {
+        tauri::async_runtime::spawn(crate::updates::check());
+    }
     crate::tray::rebuild();
     Ok(SettingsResult {
         settings,
@@ -111,7 +115,8 @@ pub struct AppInfo {
 pub fn app_info() -> AppInfo {
     let st = state();
     AppInfo {
-        version: env!("CARGO_PKG_VERSION").into(),
+        // Aus der Tauri-Konfiguration: Der Build setzt dort die Version des Tags (z. B. 0.1.0-beta.4).
+        version: st.updates.status().current,
         data_dir: st.dirs.data.display().to_string(),
         models_dir: st.dirs.models.display().to_string(),
         log_dir: st.dirs.logs.display().to_string(),
@@ -550,4 +555,35 @@ pub fn open_notices(app: AppHandle) -> CmdResult<()> {
         .resolve("THIRD-PARTY-NOTICES.txt", BaseDirectory::Resource)
         .map_err(err)?;
     app.opener().open_path(path.display().to_string(), None::<&str>).map_err(err)
+}
+
+// ---------- Updates ----------
+
+#[tauri::command]
+pub fn update_status() -> UpdateStatus {
+    state().updates.status()
+}
+
+#[tauri::command]
+pub async fn update_check() -> UpdateStatus {
+    crate::updates::check().await;
+    state().updates.status()
+}
+
+#[tauri::command]
+pub fn update_install() -> CmdResult<()> {
+    crate::updates::install().map_err(err)
+}
+
+#[tauri::command]
+pub fn update_notice_seen() {
+    crate::updates::notice_seen();
+}
+
+/// Release-Seite der neuen Version, sonst die Übersicht aller Releases.
+#[tauri::command]
+pub fn update_open_page(app: AppHandle) -> CmdResult<()> {
+    use tauri_plugin_opener::OpenerExt;
+    let url = state().updates.status().url.unwrap_or_else(|| crate::updates::RELEASES_PAGE.into());
+    app.opener().open_url(url, None::<&str>).map_err(err)
 }

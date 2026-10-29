@@ -36,6 +36,9 @@ jobs:
           git config --system core.longpaths true
 
       - uses: actions/checkout@v5
+        with:
+          # Ganze Historie samt Tags: Die Release-Notizen sammeln die Commits seit dem letzten Tag.
+          fetch-depth: 0
 
       - uses: oven-sh/setup-bun@v2
 
@@ -124,7 +127,23 @@ jobs:
         run: |
           prerelease=()
           [[ "$GITHUB_REF_NAME" == *-* ]] && prerelease=(--prerelease)
+          # Die Stichpunkte über der Linie zeigt die App nach dem Update als Neuerungen an
+          # (updates::release_notes); auf GitHub lassen sie sich nachträglich bearbeiten.
+          prev=$(git describe --tags --abbrev=0 "$GITHUB_REF_NAME^" 2>/dev/null || true)
+          {
+            echo "## Neu"
+            echo
+            git log --no-merges --max-count=30 --pretty='- %s' "${prev:+$prev..}$GITHUB_REF_NAME"
+            echo
+            echo "---"
+            echo
+            echo "Installer (\`*-setup.exe\`) oder portable Zip. Nicht signiert: Windows SmartScreen zeigt beim ersten Start „Unbekannter Herausgeber“ → Weitere Informationen → Trotzdem ausführen."
+            if [[ -n "$prev" ]]; then
+              echo
+              echo "**Alle Änderungen**: https://github.com/$GITHUB_REPOSITORY/compare/$prev...$GITHUB_REF_NAME"
+            fi
+          } > release-notes.md
+          cat release-notes.md
           gh release create "$GITHUB_REF_NAME" out/* "${prerelease[@]}" \
             --title "Whisper Bird ${{ steps.cfg.outputs.version }}" \
-            --generate-notes \
-            --notes "Installer (\`*-setup.exe\`) oder portable Zip. Nicht signiert: Windows SmartScreen zeigt beim ersten Start „Unbekannter Herausgeber“ → Weitere Informationen → Trotzdem ausführen."
+            --notes-file release-notes.md

@@ -141,7 +141,7 @@ fn build_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
     let settings = MenuItem::with_id(app, "settings", t(lang, "tray_settings"), true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", t(lang, "tray_quit"), true, None::<&str>)?;
     let sep = || PredefinedMenuItem::separator(app);
-    Menu::with_items(
+    let menu = Menu::with_items(
         app,
         &[
             &last_item,
@@ -159,7 +159,13 @@ fn build_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
             &settings,
             &quit,
         ],
-    )
+    )?;
+    // Steht über „Einstellungen“, solange eine neue Version bereitliegt.
+    if let Some(version) = st.updates.status().latest {
+        let update = MenuItem::with_id(app, "update", format!("{} ({version}) …", t(lang, "tray_update")), true, None::<&str>)?;
+        menu.insert(&update, menu.items()?.len() - 2)?;
+    }
+    Ok(menu)
 }
 
 /// Rechtsklick-Menü des Floating Icons.
@@ -219,6 +225,7 @@ pub fn handle_menu(app: &AppHandle, id: &str) {
             rebuild();
         }
         "settings" => crate::show_main_window(None),
+        "update" => crate::show_main_window(Some("help")),
         "quit" => {
             st.enhancer.llama.stop();
             app.exit(0);

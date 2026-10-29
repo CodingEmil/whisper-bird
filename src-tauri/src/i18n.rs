@@ -23,6 +23,8 @@ pub fn t(lang: &str, key: &str) -> String {
         "tray_floating" => if de { "Floating Icon anzeigen" } else { "Show floating icon" },
         "tray_enhance" => if de { "Enhance immer an" } else { "Always enhance" },
         "tray_settings" => if de { "Einstellungen …" } else { "Settings …" },
+        "tray_update" => if de { "Update verfügbar" } else { "Update available" },
+        "update_busy" => if de { "Bitte erst Diktat oder Meeting beenden." } else { "Please finish the dictation or meeting first." },
         "tray_quit" => if de { "Whisper Bird beenden" } else { "Quit Whisper Bird" },
         "tray_none" => if de { "Noch keine Transkription" } else { "No transcription yet" },
         "tray_copy_hint" => if de { "Klicken zum Kopieren" } else { "Click to copy" },

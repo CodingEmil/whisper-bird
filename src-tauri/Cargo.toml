@@ -34,6 +34,7 @@ zip = { version = "2", default-features = false, features = ["deflate"] }
 rusqlite = { version = "0.37", features = ["bundled"] }
 chrono = { version = "0.4", features = ["serde"] }
 regex = "1"
+semver = "1"
 strsim = "0.11"
 hound = "3.5"
 symphonia = { version = "0.5", features = ["all"] }

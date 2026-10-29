@@ -17,6 +17,7 @@ mod settings;
 mod state;
 mod text;
 mod tray;
+mod updates;
 mod win;
 
 use state::{state, Dirs};
@@ -34,7 +35,7 @@ pub fn show_main_window(page: Option<&str>) {
             Some(w) => w,
             None => match WebviewWindowBuilder::new(&app, MAIN_LABEL, WebviewUrl::App("index.html".into()))
                 .title("Whisper Bird")
-                .inner_size(1100.0, 740.0)
+                .inner_size(1100.0, 760.0)
                 .min_inner_size(900.0, 600.0)
                 .center()
                 .theme(Some(tauri::Theme::Dark))
@@ -203,6 +204,11 @@ pub fn run() {
             commands::finish_onboarding,
             commands::open_data_dir,
             commands::open_notices,
+            commands::update_status,
+            commands::update_check,
+            commands::update_install,
+            commands::update_open_page,
+            commands::update_notice_seen,
         ])
         .setup(|app| {
             let handle = app.handle().clone();
@@ -217,7 +223,7 @@ pub fn run() {
             let st = state::init(handle.clone(), dirs)?;
             let s = st.settings();
             log::set_max_level(if s.debug_logging { log::LevelFilter::Debug } else { log::LevelFilter::Info });
-            log::info!("Whisper Bird {} startet", env!("CARGO_PKG_VERSION"));
+            log::info!("Whisper Bird {} startet", app.package_info().version);
 
             // Maßgeblich ist Windows: Installer und Task-Manager ändern den Autostart an der App vorbei.
             {
@@ -247,6 +253,7 @@ pub fn run() {
             }
             overlay::set(overlay::Phase::Idle, None, false, None);
             background_tasks();
+            updates::init();
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -262,12 +269,10 @@ pub fn run() {
     let app = builder
         .build(tauri::generate_context!())
         .expect("Fehler beim Starten von Whisper Bird");
-    app.run(|_app, event| {
-        if let RunEvent::ExitRequested { api, code, .. } = event {
-            // Ohne expliziten Exit-Code (letztes Fenster zu) im Tray weiterlaufen.
-            if code.is_none() {
-                api.prevent_exit();
-            }
-        }
+    app.run(|_app, event| match event {
+        // Ohne expliziten Exit-Code (letztes Fenster zu) im Tray weiterlaufen.
+        RunEvent::ExitRequested { api, code, .. } if code.is_none() => api.prevent_exit(),
+        RunEvent::Exit => updates::start_replacement(),
+        _ => {}
     });
 }

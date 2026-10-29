@@ -10,14 +10,16 @@ import {
   Keyboard,
   Mic,
   PenLine,
+  RefreshCw,
   SlidersHorizontal,
   Sparkles,
   Users,
   type LucideIcon,
 } from "lucide-react";
-import { api, on } from "./lib/api";
+import { api, on, type UpdateStatus } from "./lib/api";
 import { useApp, useWindowShortcuts } from "./lib/app";
 import type { TKey } from "./lib/i18n";
+import { UpdateNotice, useUpdate } from "./lib/update";
 import Home from "./pages/Home";
 import Dictation from "./pages/Dictation";
 import Models from "./pages/Models";
@@ -96,11 +98,52 @@ const NAV: NavGroup[] = [
 
 const PAGES = NAV.flatMap((g) => g.pages);
 
+/** Ganz unten in der Seitenleiste: die Version, der Stand der Update-Suche und ein Knopf für eine neue Suche. */
+function VersionFoot({ status, onOpen }: { status: UpdateStatus | null; onOpen: () => void }) {
+  const { t } = useApp();
+  if (!status) return null;
+  if (status.latest) {
+    return (
+      <div className="nav-version">
+        <button type="button" className="nav-version-update" onClick={onOpen}>
+          {t("update.available", { version: status.latest })}
+        </button>
+      </div>
+    );
+  }
+  const state = status.checking
+    ? t("update.short_checking")
+    : status.error
+      ? t("update.short_failed")
+      : status.checked_at
+        ? t("update.short_current")
+        : null;
+  return (
+    <div className="nav-version">
+      <span className="num" title={status.error ?? undefined}>
+        v{status.current}
+        {state && ` · ${state}`}
+      </span>
+      <button
+        type="button"
+        className="nav-version-check"
+        title={t("update.check")}
+        aria-label={t("update.check")}
+        disabled={status.checking}
+        onClick={() => void api.updateCheck()}
+      >
+        <RefreshCw size={12} className={status.checking ? "spin" : undefined} />
+      </button>
+    </div>
+  );
+}
+
 export default function App() {
   const { t, settings } = useApp();
   const [page, setPage] = useState<PageId>("home");
   const [onboarding, setOnboarding] = useState(!settings.onboarding_done);
   const [meetingActive, setMeetingActive] = useState(false);
+  const { status: update } = useUpdate();
   useWindowShortcuts();
 
   useEffect(() => {
@@ -162,17 +205,20 @@ export default function App() {
                   <Icon size={18} />
                   <span className="nav-label">{t(p.key)}</span>
                   {p.id === "meetings" && meetingActive && <span className="nav-badge">{t("meet.recording")}</span>}
+                  {p.id === "help" && update?.latest && <span className="nav-badge update">{t("update.badge")}</span>}
                 </button>
               );
             })}
           </div>
         ))}
+        <VersionFoot status={update} onOpen={() => setPage("help")} />
       </nav>
       <main className="content">
         <div className="page" key={current.id}>
           <Comp navigate={setPage} />
         </div>
       </main>
+      <UpdateNotice status={update} />
     </div>
   );
 }

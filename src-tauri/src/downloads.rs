@@ -55,6 +55,18 @@ impl Downloads {
     where
         F: FnOnce(&AppHandle) + Send + 'static,
     {
+        self.start_with(app, req, move |app, ok| {
+            if ok {
+                on_done(app);
+            }
+        })
+    }
+
+    /// Wie `start`, meldet aber auch Fehler und Abbruch (`false`).
+    pub fn start_with<F>(self: &Arc<Self>, app: AppHandle, req: DownloadRequest, on_finish: F) -> bool
+    where
+        F: FnOnce(&AppHandle, bool) + Send + 'static,
+    {
         let cancel = Arc::new(AtomicBool::new(false));
         {
             let mut active = self.active.lock().unwrap();
@@ -86,9 +98,7 @@ impl Downloads {
                     error,
                 },
             );
-            if state == "done" {
-                on_done(&app);
-            }
+            on_finish(&app, state == "done");
         });
         true
     }
@@ -191,7 +201,7 @@ async fn run(app: &AppHandle, req: &DownloadRequest, cancel: &AtomicBool) -> any
     Ok(())
 }
 
-fn sha256_file(path: &Path) -> anyhow::Result<String> {
+pub fn sha256_file(path: &Path) -> anyhow::Result<String> {
     use std::io::Read;
     let mut file = std::fs::File::open(path)?;
     let mut hasher = Sha256::new();

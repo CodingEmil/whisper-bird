@@ -62,6 +62,9 @@ export default function Advanced() {
         <Row label={t("adv.start_hidden")}>
           <Toggle value={s.start_hidden} onChange={(start_hidden) => update({ start_hidden })} />
         </Row>
+        <Row label={t("adv.check_updates")} hint={t("adv.check_updates_hint")}>
+          <Toggle value={s.check_updates} onChange={(check_updates) => update({ check_updates })} />
+        </Row>
       </Card>
 
       <Card title={t("adv.performance")}>
