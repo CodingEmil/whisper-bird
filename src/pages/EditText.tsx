@@ -1,6 +1,6 @@
 import { Info, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { api, type EditAction } from "../lib/api";
-import { Card, Row, useApp } from "../lib/app";
+import { Card, Row, Segmented, useApp } from "../lib/app";
 import { WithShortcut } from "./Home";
 
 export default function EditText() {
@@ -32,6 +32,16 @@ export default function EditText() {
             aria-label={t("edit.translate_target")}
             defaultValue={s.translate_target}
             onBlur={(e) => update({ translate_target: e.target.value.trim() || s.translate_target })}
+          />
+        </Row>
+        <Row label={t("edit.click_away")} hint={t("edit.click_away_hint")}>
+          <Segmented
+            value={s.edit_menu_stays_open ? "open" : "close"}
+            options={[
+              ["open", t("edit.stays_open")],
+              ["close", t("edit.closes")],
+            ]}
+            onChange={(v) => update({ edit_menu_stays_open: v === "open" })}
           />
         </Row>
       </Card>

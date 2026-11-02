@@ -39,6 +39,7 @@ test("meldet Tasten im Testfeld ans Backend", async ({ page }) => {
     "↓ CtrlLeft -",
     "↓ CtrlLeft+ShiftLeft -",
     "↓ CtrlLeft+ShiftLeft Space",
+    "↓ CtrlLeft+ShiftLeft Space", // Wiederholung geht mit, das Backend filtert sie (hotkeys.rs)
     "↑ CtrlLeft+ShiftLeft Space",
     "↑ CtrlLeft -",
     "↑  -",

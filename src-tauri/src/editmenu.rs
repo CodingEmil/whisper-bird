@@ -7,6 +7,7 @@ use crate::settings::EditAction;
 use crate::state::state;
 use crate::win::foreground::{self, AppContext};
 use serde::Serialize;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, WebviewUrl, WebviewWindowBuilder, WindowEvent};
@@ -24,11 +25,21 @@ struct Session {
 pub struct EditMenu {
     session: Mutex<Option<Session>>,
     busy: Mutex<bool>,
+    /// Das Menü ist schon zu sehen, die Markierung wird noch kopiert.
+    capturing: AtomicBool,
+}
+
+#[derive(Clone, Serialize)]
+struct SelectionPayload {
+    selection: Option<String>,
+    app: String,
 }
 
 #[derive(Clone, Serialize)]
 struct OpenPayload {
     selection: Option<String>,
+    /// Die Markierung folgt per `editmenu-selection`.
+    pending: bool,
     app: String,
     actions: Vec<EditAction>,
     translate_target: String,
@@ -49,12 +60,22 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
         .visible(false)
         .build()?;
     window.on_window_event(|event| {
+        // Je nach Einstellung schließt ein Klick daneben das Menü. Bleibt es offen,
+        // lässt sich in der App neuer Text markieren und übernehmen (siehe `open`).
         if let WindowEvent::Focused(false) = event {
-            // Klick daneben schließt das Menü – außer während einer Anfrage.
-            let st = state();
-            if !*st.editmenu.busy.lock().unwrap() && !st.dictation.is_busy() {
-                close(false);
+            if state().settings().edit_menu_stays_open {
+                return;
             }
+            // tao meldet beim Öffnen mitunter „Fokus weg“, während der Fokus nur in die
+            // WebView wandert. Deshalb kurz warten und nur schließen, wenn wirklich ein
+            // anderes Fenster vorn ist – und keine Anfrage läuft.
+            std::thread::spawn(|| {
+                std::thread::sleep(Duration::from_millis(150));
+                let st = state();
+                if is_open() && !is_foreground() && !*st.editmenu.busy.lock().unwrap() && !st.dictation.is_busy() {
+                    close(false);
+                }
+            });
         }
     });
     Ok(())
@@ -68,18 +89,35 @@ pub fn is_open() -> bool {
         .unwrap_or(false)
 }
 
-/// Vom Shortcut aufgerufen (Hotkey-Thread).
+/// Ist das Menü vorn (hat es den Fokus)?
+fn is_foreground() -> bool {
+    #[cfg(windows)]
+    if let Some(Ok(h)) = state().app.get_webview_window(LABEL).map(|w| w.hwnd()) {
+        return h.0 as isize == foreground::active_app().hwnd;
+    }
+    false
+}
+
+/// Vom Shortcut aufgerufen (Hotkey-Thread). Ist das Menü schon offen, schließt
+/// das Kürzel es, wenn es vorn ist; sonst übernimmt es die Markierung der App
+/// im Vordergrund.
 pub fn open() {
     let st = state();
+    if st.editmenu.capturing.load(Ordering::SeqCst) {
+        return;
+    }
     if is_open() {
-        close(true);
+        if is_foreground() {
+            close(true);
+        } else {
+            recapture();
+        }
         return;
     }
     if st.dictation.is_busy() {
         return;
     }
     let target = foreground::active_app();
-    let selection = insert::capture_selection();
     let s = st.settings();
     // Lokales Modell laden, während die Anweisung getippt oder gesprochen wird.
     if st.enhancer.ready(&s).is_ok() {
@@ -88,22 +126,77 @@ pub fn open() {
     }
     *st.editmenu.session.lock().unwrap() = Some(Session {
         target: target.clone(),
-        selection: selection.clone(),
+        selection: None,
     });
+    st.editmenu.capturing.store(true, Ordering::SeqCst);
     let payload = OpenPayload {
-        selection,
+        selection: None,
+        pending: true,
         app: target.display_name(),
         actions: s.edit_actions.clone(),
         translate_target: s.translate_target.clone(),
     };
     let app = st.app.clone();
+    // Sofort zeigen, aber ohne Fokus: Das Strg+C zum Kopieren muss noch die Ziel-App
+    // erreichen, und das wartet aufs Loslassen der Tasten (ohne Markierung bis 0,6 s).
     let _ = st.app.run_on_main_thread(move || {
         let Some(w) = app.get_webview_window(LABEL) else { return };
         if let Some(pos) = menu_position(&app) {
             let _ = w.set_position(pos);
         }
+        let _ = w.set_focusable(false);
         let _ = w.emit_to(LABEL, "editmenu-open", &payload);
         let _ = w.show();
+    });
+    let selection = insert::capture_selection();
+    st.editmenu.capturing.store(false, Ordering::SeqCst);
+    // Inzwischen per X geschlossen? Dann nicht wieder nach vorn holen.
+    let still_open = match st.editmenu.session.lock().unwrap().as_mut() {
+        Some(session) => {
+            session.selection = selection.clone();
+            true
+        }
+        None => false,
+    };
+    let payload = SelectionPayload {
+        selection,
+        app: target.display_name(),
+    };
+    let app = st.app.clone();
+    let _ = st.app.run_on_main_thread(move || {
+        let Some(w) = app.get_webview_window(LABEL) else { return };
+        let _ = w.set_focusable(true);
+        if still_open {
+            let _ = w.emit_to(LABEL, "editmenu-selection", &payload);
+            force_foreground(&w);
+        }
+    });
+}
+
+/// Neue Markierung bei offenem Menü: Ziel-App und Text wechseln, die Anweisung bleibt.
+fn recapture() {
+    let st = state();
+    let app = st.app.clone();
+    // Während einer Anfrage nur nach vorn holen: Das Ergebnis gehört zum alten Text.
+    let payload = if *st.editmenu.busy.lock().unwrap() || st.dictation.is_busy() {
+        None
+    } else {
+        let target = foreground::active_app();
+        let selection = insert::capture_selection();
+        *st.editmenu.session.lock().unwrap() = Some(Session {
+            target: target.clone(),
+            selection: selection.clone(),
+        });
+        Some(SelectionPayload {
+            selection,
+            app: target.display_name(),
+        })
+    };
+    let _ = st.app.run_on_main_thread(move || {
+        let Some(w) = app.get_webview_window(LABEL) else { return };
+        if let Some(payload) = payload {
+            let _ = w.emit_to(LABEL, "editmenu-selection", &payload);
+        }
         force_foreground(&w);
     });
 }
@@ -152,6 +245,7 @@ fn force_foreground(w: &tauri::WebviewWindow) {
     let _ = w.set_focus();
 }
 
+/// Schließt das Menü; mit `restore_focus` bekommt die Ziel-App den Fokus zurück.
 pub fn close(restore_focus: bool) {
     let st = state();
     let session = st.editmenu.session.lock().unwrap().take();
@@ -164,6 +258,9 @@ pub fn close(restore_focus: bool) {
             let _ = w.hide();
         }
     });
+    // Das Menü verschwindet, bevor es das Loslassen der Tasten sieht. Ohne Freigabe
+    // gälte das Kürzel als weiter gedrückt und der nächste Druck käme nicht an.
+    st.hotkeys.window_blur();
     if restore_focus {
         if let Some(s) = session {
             foreground::focus(s.target.hwnd);

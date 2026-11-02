@@ -60,6 +60,7 @@ export interface Settings {
   enhance_timeout_sec: number;
   edit_actions: EditAction[];
   translate_target: string;
+  edit_menu_stays_open: boolean;
   history_limit: number;
   meeting_source: MeetingSource;
   meeting_auto_notes: boolean;

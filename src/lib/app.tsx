@@ -297,7 +297,9 @@ export function useWindowShortcuts() {
     let queue = Promise.resolve();
     const send = (call: () => Promise<void>) => { queue = queue.then(call).catch(() => {}); };
     const keyboard = (e: KeyboardEvent) => {
-      if (e.repeat || e.isComposing) return;
+      // Wiederholungen filtert das Backend. e.repeat taugt nicht: Verschwindet das Fenster
+      // vor dem Loslassen, meldet Chromium den nächsten Druck fälschlich als Wiederholung.
+      if (e.isComposing) return;
       const down = e.type === "keydown";
       const k = keys.handle(e, down);
       if (k) send(() => api.windowKey(k.modifiers, k.key, down));

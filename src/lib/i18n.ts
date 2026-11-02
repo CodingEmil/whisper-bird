@@ -164,6 +164,10 @@ const de = {
   "edit.add": "Aktion hinzufügen",
   "edit.reset": "Standardaktionen",
   "edit.translate_target": "Zielsprache für „Übersetzen“",
+  "edit.click_away": "Klick neben das Menü",
+  "edit.click_away_hint": "Bleibt es offen, markierst du in der App neuen Text und übernimmst ihn mit dem Shortcut.",
+  "edit.stays_open": "Lässt es offen",
+  "edit.closes": "Schließt es",
   "edit.needs_enhance": "Nutzt den Enhance-Anbieter aus „Enhance“.",
 
   "words.title": "Wörter & Snippets",
@@ -531,6 +535,10 @@ const en: Record<Key, string> = {
   "edit.add": "Add action",
   "edit.reset": "Default actions",
   "edit.translate_target": "Target language for “Translate”",
+  "edit.click_away": "Clicking outside the menu",
+  "edit.click_away_hint": "If it stays open, select new text in the app and pick it up with the shortcut.",
+  "edit.stays_open": "Keeps it open",
+  "edit.closes": "Closes it",
   "edit.needs_enhance": "Uses the provider configured under “Enhance”.",
 
   "words.title": "Words & snippets",

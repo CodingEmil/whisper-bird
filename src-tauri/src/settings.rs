@@ -141,6 +141,9 @@ pub struct Settings {
     // Kontextmenü „Text bearbeiten“
     pub edit_actions: Vec<EditAction>,
     pub translate_target: String,
+    /// Klick in eine andere App lässt das Menü offen (dort neu markieren und per
+    /// Shortcut übernehmen); sonst schließt er es.
+    pub edit_menu_stays_open: bool,
 
     // Verlauf
     pub history_limit: u32,
@@ -234,6 +237,7 @@ impl Default for Settings {
         Self {
             edit_actions: default_edit_actions(&ui_language),
             translate_target: if ui_language == "de" { "Englisch" } else { "German" }.into(),
+            edit_menu_stays_open: true,
             ui_language,
             onboarding_done: false,
 

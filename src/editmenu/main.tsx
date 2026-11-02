@@ -22,12 +22,15 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { api, on, type EditAction, type Settings } from "../lib/api";
+import { useWindowShortcuts } from "../lib/app";
 import { translate, type TKey } from "../lib/i18n";
 import "../styles.css";
 import "./editmenu.css";
 
 interface OpenPayload {
   selection: string | null;
+  /** Das Menü ist schon da, die Markierung kommt per „editmenu-selection“ nach. */
+  pending?: boolean;
   app: string;
   actions: EditAction[];
   translate_target: string;
@@ -58,6 +61,8 @@ function EditMenu() {
   const [level, setLevel] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const t = (k: TKey, v?: Record<string, string>) => translate(lang, k, v);
+  // Damit das Kürzel das Menü auch schließt, wenn es den Fokus hat.
+  useWindowShortcuts();
 
   useEffect(() => {
     api.getSettings().then((s) => setLang(s.ui_language));
@@ -73,6 +78,14 @@ function EditMenu() {
         setListening(false);
         setTimeout(() => inputRef.current?.focus(), 30);
       }),
+      // Neue Markierung bei offenem Menü: Text und App wechseln, die Anweisung bleibt.
+      on<Pick<OpenPayload, "selection" | "app">>("editmenu-selection", (p) => {
+        setSession((s) => s && { ...s, ...p, pending: false });
+        setActive(-1);
+        setResult(null);
+        setError(null);
+        setTimeout(() => inputRef.current?.focus(), 30);
+      }),
       on<string>("editmenu-voice", (text) => {
         setListening(false);
         if (text) {
@@ -86,7 +99,7 @@ function EditMenu() {
   }, []);
 
   const run = async (instruction: string) => {
-    if (!instruction.trim()) return;
+    if (!instruction.trim() || session?.pending) return;
     setLastInstruction(instruction);
     setBusy(true);
     setError(null);
@@ -157,7 +170,9 @@ function EditMenu() {
 
       {result === null ? (
         <>
-          {session.selection ? (
+          {session.pending ? (
+            <div className="em-selection" aria-busy="true">…</div>
+          ) : session.selection ? (
             <div className="em-selection selectable">{session.selection}</div>
           ) : (
             <div className="em-selection empty">{t("editmenu.no_selection")}</div>
