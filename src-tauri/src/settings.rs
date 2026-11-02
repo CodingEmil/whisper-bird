@@ -37,7 +37,7 @@ pub enum EnhanceMode {
 pub enum EnhanceProvider {
     /// Gemma 4 lokal über llama-server.
     Local,
-    /// Lokale CLI (Claude Code, Codex, Gemini CLI, eigener Befehl).
+    /// Lokale CLI (Claude Code, Codex, Gemini CLI, Pi, Copilot CLI, eigener Befehl).
     Cli,
     /// OpenAI-kompatible API (Ollama, LM Studio, OpenAI …).
     Api,

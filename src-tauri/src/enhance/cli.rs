@@ -1,5 +1,5 @@
-//! Enhance über eine lokal installierte CLI (Claude Code, Codex, Gemini CLI
-//! oder ein eigener Befehl). Der komplette Prompt geht über stdin hinein.
+//! Enhance über eine lokal installierte CLI (Claude Code, Codex, Gemini CLI,
+//! Pi, Copilot CLI oder ein eigener Befehl). Der komplette Prompt geht über stdin hinein.
 
 use std::time::Duration;
 use tokio::io::AsyncWriteExt;
@@ -9,6 +9,10 @@ pub fn preset_command(preset: &str) -> &'static str {
         "claude" => "claude -p --model haiku",
         "codex" => "codex exec --skip-git-repo-check -",
         "gemini" => "gemini -m gemini-2.5-flash -p \" \"",
+        // Pi liest den Prompt aus stdin; ohne Session-Datei und ohne Tools.
+        "pi" => "pi -p --no-session --no-tools",
+        // Copilot CLI nimmt den Prompt aus stdin, -s gibt nur die Antwort aus.
+        "copilot" => "copilot -s --no-ask-user",
         _ => "",
     }
 }

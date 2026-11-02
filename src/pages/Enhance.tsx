@@ -8,6 +8,8 @@ const CLI_PRESETS: Record<string, string> = {
   claude: "claude -p --model haiku",
   codex: "codex exec --skip-git-repo-check -",
   gemini: 'gemini -m gemini-2.5-flash -p " "',
+  pi: "pi -p --no-session --no-tools",
+  copilot: "copilot -s --no-ask-user",
 };
 
 export default function Enhance() {
@@ -168,6 +170,8 @@ export default function Enhance() {
                 ["claude", "Claude Code"],
                 ["codex", "Codex CLI"],
                 ["gemini", "Gemini CLI"],
+                ["pi", "Pi"],
+                ["copilot", "Copilot CLI"],
                 ["custom", "Custom"],
               ]}
               onChange={(preset) =>
