@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="240" viewBox="0 0 1280 240" role="img" aria-labelledby="t d">
+<title id="t">Ablauf</title><desc id="d">Aufnehmen, Erkennen, Verbessern, Einfügen.</desc>
+<rect width="1280" height="240" rx="20" fill="#182930"/>
+<rect x="40.0" y="36" width="268" height="168" rx="14" fill="#1F323A"/>
+<circle cx="80.0" cy="80" r="18" fill="#283D45"/><text x="80.0" y="86" text-anchor="middle" font-family="'Segoe UI Variable Text','Segoe UI',Inter,system-ui,-apple-system,Helvetica,Arial,sans-serif" font-size="17" font-weight="600" fill="#F1ECE3">1</text>
+<text x="64.0" y="140" font-family="'Segoe UI Variable Display','Segoe UI',Inter,system-ui,-apple-system,Helvetica,Arial,sans-serif" font-size="25" font-weight="600" letter-spacing="-.4" fill="#F1ECE3">Aufnehmen</text>
+<text font-family="'Segoe UI Variable Text','Segoe UI',Inter,system-ui,-apple-system,Helvetica,Arial,sans-serif" font-size="15" fill="#A0B2B4"><tspan x="64.0" y="168">Mikrofon, PC-Audio</tspan><tspan x="64.0" y="188">oder Datei</tspan></text>
+<path d="M321.3333333333333 120h14m-5-6 6 6-6 6" fill="none" stroke="#6A7E85" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="350.6666666666667" y="36" width="268" height="168" rx="14" fill="#1F323A"/>
+<circle cx="390.6666666666667" cy="80" r="18" fill="#283D45"/><text x="390.6666666666667" y="86" text-anchor="middle" font-family="'Segoe UI Variable Text','Segoe UI',Inter,system-ui,-apple-system,Helvetica,Arial,sans-serif" font-size="17" font-weight="600" fill="#F1ECE3">2</text>
+<text x="374.6666666666667" y="140" font-family="'Segoe UI Variable Display','Segoe UI',Inter,system-ui,-apple-system,Helvetica,Arial,sans-serif" font-size="25" font-weight="600" letter-spacing="-.4" fill="#F1ECE3">Erkennen</text>
+<text font-family="'Segoe UI Variable Text','Segoe UI',Inter,system-ui,-apple-system,Helvetica,Arial,sans-serif" font-size="15" fill="#A0B2B4"><tspan x="374.6666666666667" y="168">Parakeet, Qwen3, Canary,</tspan><tspan x="374.6666666666667" y="188">Whisper – lokal</tspan></text>
+<path d="M632.0000000000001 120h14m-5-6 6 6-6 6" fill="none" stroke="#6A7E85" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="661.3333333333334" y="36" width="268" height="168" rx="14" fill="#1F323A"/>
+<circle cx="701.3333333333334" cy="80" r="18" fill="#7FE0C7"/><text x="701.3333333333334" y="86" text-anchor="middle" font-family="'Segoe UI Variable Text','Segoe UI',Inter,system-ui,-apple-system,Helvetica,Arial,sans-serif" font-size="17" font-weight="600" fill="#002826">3</text>
+<text x="685.3333333333334" y="140" font-family="'Segoe UI Variable Display','Segoe UI',Inter,system-ui,-apple-system,Helvetica,Arial,sans-serif" font-size="25" font-weight="600" letter-spacing="-.4" fill="#F1ECE3">Verbessern</text>
+<text font-family="'Segoe UI Variable Text','Segoe UI',Inter,system-ui,-apple-system,Helvetica,Arial,sans-serif" font-size="15" fill="#A0B2B4"><tspan x="685.3333333333334" y="168">Enhance: Grammatik,</tspan><tspan x="685.3333333333334" y="188">Ton, Format</tspan></text>
+<path d="M942.6666666666667 120h14m-5-6 6 6-6 6" fill="none" stroke="#6A7E85" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="972.0" y="36" width="268" height="168" rx="14" fill="#1F323A"/>
+<circle cx="1012.0" cy="80" r="18" fill="#283D45"/><text x="1012.0" y="86" text-anchor="middle" font-family="'Segoe UI Variable Text','Segoe UI',Inter,system-ui,-apple-system,Helvetica,Arial,sans-serif" font-size="17" font-weight="600" fill="#F1ECE3">4</text>
+<text x="996.0" y="140" font-family="'Segoe UI Variable Display','Segoe UI',Inter,system-ui,-apple-system,Helvetica,Arial,sans-serif" font-size="25" font-weight="600" letter-spacing="-.4" fill="#F1ECE3">Einfügen</text>
+<text font-family="'Segoe UI Variable Text','Segoe UI',Inter,system-ui,-apple-system,Helvetica,Arial,sans-serif" font-size="15" fill="#A0B2B4"><tspan x="996.0" y="168">an der Cursorposition,</tspan><tspan x="996.0" y="188">Zwischenablage bleibt</tspan></text>
+</svg>

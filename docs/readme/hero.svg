@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="520" viewBox="0 0 1280 520" role="img" aria-labelledby="t d">
+<title id="t">Whisper Bird</title><desc id="d">Lokales Diktieren für Windows. Strg + Umschalt + Leertaste drücken, sprechen, der Text erscheint am Cursor.</desc>
+<rect width="1280" height="520" rx="20" fill="#182930"/>
+<path d="M20 0H300V520H20A20 20 0 0 1 0 500V20A20 20 0 0 1 20 0Z" fill="#142227"/>
+<g transform="translate(46 132) scale(0.86)"><defs>
+<linearGradient id="hc" x1="96" y1="30" x2="173" y2="166" gradientUnits="userSpaceOnUse"><stop stop-color="#47CEC9"/><stop offset=".48" stop-color="#189BB4"/><stop offset="1" stop-color="#13618E"/></linearGradient>
+<linearGradient id="hb" x1="141" y1="102" x2="157" y2="210" gradientUnits="userSpaceOnUse"><stop stop-color="#FBC782"/><stop offset=".5" stop-color="#EEA15B"/><stop offset="1" stop-color="#D57538"/></linearGradient>
+<linearGradient id="hw" x1="79" y1="105" x2="105" y2="194" gradientUnits="userSpaceOnUse"><stop stop-color="#288FB4"/><stop offset="1" stop-color="#164968"/></linearGradient>
+<linearGradient id="hk" x1="196" y1="62" x2="196" y2="83" gradientUnits="userSpaceOnUse"><stop stop-color="#88A5AE"/><stop offset=".48" stop-color="#4E7285"/><stop offset=".52" stop-color="#2D4B61"/></linearGradient>
+</defs>
+<path fill="#245D78" d="M62 169L97 195L36 225L19 220Z"/>
+<path d="M98 201L93 224L105 228M93 224L86 227M123 201L118 224L131 227M118 224L111 228" fill="none" stroke="#AA6346" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+<path fill="url(#hk)" d="M173 62L246 74L173 72Z" transform="rotate(-0.0 173 72)"/>
+<path fill="url(#hk)" d="M173 72L246 74L173 82Z" transform="rotate(0.0 173 72)"/>
+<path fill="url(#hc)" d="M34 197C43 158 63 114 87 86C85 70 89 50 104 38C120 27 143 27 160 35C177 43 183 60 177 77L169 92C179 108 177 134 164 158C146 193 124 213 99 211C73 211 49 198 34 197Z"/>
+<path fill="url(#hb)" d="M169 89C179 107 177 133 164 158C146 193 124 213 99 211C87 211 76 207 67 202C91 187 108 166 120 141C130 118 145 100 169 89Z"/>
+<path fill="#F8EDCF" d="M170 88C175 97 177 111 174 122C165 119 158 111 154 102C160 97 165 92 170 88Z"/>
+<path fill="#D98A48" d="M114 71C128 78 143 78 156 73L163 85C150 97 135 99 122 91Z"/>
+<path fill="#F6EDD8" d="M111 78L124 92L115 102C109 99 104 93 103 89Z"/>
+<path fill="#5BDFCE" d="M92 95C72 124 56 157 42 190L34 197C44 157 66 116 86 91Z"/>
+<path fill="url(#hw)" d="M123 99C105 90 85 108 69 131C53 154 42 177 34 197C65 193 94 174 114 148C128 129 134 111 123 99Z"/>
+<path d="M122 110C110 135 88 157 61 179M119 129C105 151 86 166 69 175" fill="none" stroke="#6EC9CD" stroke-width="2" stroke-linecap="round" opacity=".35"/>
+<path d="M104 46C119 35 142 35 155 42" fill="none" stroke="#A0E3D8" stroke-width="3" stroke-linecap="round" opacity=".55"/>
+<circle fill="#102936" cx="155" cy="60" r="5.5"/><circle fill="#F7F2DE" cx="153.5" cy="58.5" r="1.4"/></g>
+<line x1="300" y1="0" x2="300" y2="520" stroke="#35474E"/>
+<text x="360" y="150" font-family="'Segoe UI Variable Text','Segoe UI',Inter,system-ui,-apple-system,Helvetica,Arial,sans-serif" font-size="16" font-weight="600" letter-spacing="2.2" fill="#7FE0C7">LOKAL · WINDOWS · IN JEDE APP</text>
+<text x="356" y="222" font-family="'Segoe UI Variable Display','Segoe UI',Inter,system-ui,-apple-system,Helvetica,Arial,sans-serif" font-size="68" font-weight="600" letter-spacing="-1.4" fill="#F1ECE3">Whisper Bird</text>
+<text font-family="'Segoe UI Variable Text','Segoe UI',Inter,system-ui,-apple-system,Helvetica,Arial,sans-serif" font-size="23" fill="#D2CDC2"><tspan x="360" y="266">Sprechen statt tippen.</tspan><tspan x="360" y="296">Der Text landet dort, wo der Cursor steht.</tspan></text>
+<rect x="360" y="332" width="78" height="44" rx="7" fill="#283D45" stroke="#6A7E85"/><rect x="361" y="371" width="76" height="4" rx="2" fill="#182930" opacity=".55"/><text x="399.0" y="360.0" text-anchor="middle" font-family="'Segoe UI Variable Text','Segoe UI',Inter,system-ui,-apple-system,Helvetica,Arial,sans-serif" font-size="17" font-weight="600" fill="#F1ECE3">Strg</text>
+<text x="453" y="361" text-anchor="middle" font-family="'Segoe UI Variable Text','Segoe UI',Inter,system-ui,-apple-system,Helvetica,Arial,sans-serif" font-size="20" fill="#A0B2B4">+</text>
+<rect x="468" y="332" width="122" height="44" rx="7" fill="#283D45" stroke="#6A7E85"/><rect x="469" y="371" width="120" height="4" rx="2" fill="#182930" opacity=".55"/><text x="529.0" y="360.0" text-anchor="middle" font-family="'Segoe UI Variable Text','Segoe UI',Inter,system-ui,-apple-system,Helvetica,Arial,sans-serif" font-size="17" font-weight="600" fill="#F1ECE3">Umschalt</text>
+<text x="605" y="361" text-anchor="middle" font-family="'Segoe UI Variable Text','Segoe UI',Inter,system-ui,-apple-system,Helvetica,Arial,sans-serif" font-size="20" fill="#A0B2B4">+</text>
+<rect x="620" y="332" width="186" height="44" rx="7" fill="#283D45" stroke="#6A7E85"/><rect x="621" y="371" width="184" height="4" rx="2" fill="#182930" opacity=".55"/><text x="713.0" y="360.0" text-anchor="middle" font-family="'Segoe UI Variable Text','Segoe UI',Inter,system-ui,-apple-system,Helvetica,Arial,sans-serif" font-size="17" font-weight="600" fill="#F1ECE3">Leertaste</text>
+<rect x="360" y="412" width="480" height="62" rx="31" fill="#142227" stroke="#35474E"/>
+<g transform="translate(372 419) scale(0.19)"><defs>
+<linearGradient id="pc" x1="96" y1="30" x2="173" y2="166" gradientUnits="userSpaceOnUse"><stop stop-color="#47CEC9"/><stop offset=".48" stop-color="#189BB4"/><stop offset="1" stop-color="#13618E"/></linearGradient>
+<linearGradient id="pb" x1="141" y1="102" x2="157" y2="210" gradientUnits="userSpaceOnUse"><stop stop-color="#FBC782"/><stop offset=".5" stop-color="#EEA15B"/><stop offset="1" stop-color="#D57538"/></linearGradient>
+<linearGradient id="pw" x1="79" y1="105" x2="105" y2="194" gradientUnits="userSpaceOnUse"><stop stop-color="#288FB4"/><stop offset="1" stop-color="#164968"/></linearGradient>
+<linearGradient id="pk" x1="196" y1="62" x2="196" y2="83" gradientUnits="userSpaceOnUse"><stop stop-color="#88A5AE"/><stop offset=".48" stop-color="#4E7285"/><stop offset=".52" stop-color="#2D4B61"/></linearGradient>
+</defs>
+<path fill="#245D78" d="M62 169L97 195L36 225L19 220Z"/>
+<path d="M98 201L93 224L105 228M93 224L86 227M123 201L118 224L131 227M118 224L111 228" fill="none" stroke="#AA6346" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+<path fill="url(#pk)" d="M173 62L246 74L173 72Z" transform="rotate(-8.399999999999999 173 72)"/>
+<path fill="url(#pk)" d="M173 72L246 74L173 82Z" transform="rotate(8.399999999999999 173 72)"/>
+<path fill="url(#pc)" d="M34 197C43 158 63 114 87 86C85 70 89 50 104 38C120 27 143 27 160 35C177 43 183 60 177 77L169 92C179 108 177 134 164 158C146 193 124 213 99 211C73 211 49 198 34 197Z"/>
+<path fill="url(#pb)" d="M169 89C179 107 177 133 164 158C146 193 124 213 99 211C87 211 76 207 67 202C91 187 108 166 120 141C130 118 145 100 169 89Z"/>
+<path fill="#F8EDCF" d="M170 88C175 97 177 111 174 122C165 119 158 111 154 102C160 97 165 92 170 88Z"/>
+<path fill="#D98A48" d="M114 71C128 78 143 78 156 73L163 85C150 97 135 99 122 91Z"/>
+<path fill="#F6EDD8" d="M111 78L124 92L115 102C109 99 104 93 103 89Z"/>
+<path fill="#5BDFCE" d="M92 95C72 124 56 157 42 190L34 197C44 157 66 116 86 91Z"/>
+<path fill="url(#pw)" d="M123 99C105 90 85 108 69 131C53 154 42 177 34 197C65 193 94 174 114 148C128 129 134 111 123 99Z"/>
+<path d="M122 110C110 135 88 157 61 179M119 129C105 151 86 166 69 175" fill="none" stroke="#6EC9CD" stroke-width="2" stroke-linecap="round" opacity=".35"/>
+<path d="M104 46C119 35 142 35 155 42" fill="none" stroke="#A0E3D8" stroke-width="3" stroke-linecap="round" opacity=".55"/>
+<circle fill="#102936" cx="155" cy="60" r="5.5"/><circle fill="#F7F2DE" cx="153.5" cy="58.5" r="1.4"/></g>
+<rect x="438.0" y="441.0" width="4.5" height="4.0" rx="2.2" fill="#7FE0C7"/><rect x="446.2" y="439.8" width="4.5" height="6.3" rx="2.2" fill="#7FE0C7"/><rect x="454.4" y="437.7" width="4.5" height="10.5" rx="2.2" fill="#7FE0C7"/><rect x="462.6" y="437.8" width="4.5" height="10.3" rx="2.2" fill="#7FE0C7"/><rect x="470.8" y="438.1" width="4.5" height="9.8" rx="2.2" fill="#7FE0C7"/><rect x="479.0" y="435.2" width="4.5" height="15.6" rx="2.2" fill="#7FE0C7"/><rect x="487.2" y="434.9" width="4.5" height="16.2" rx="2.2" fill="#7FE0C7"/><rect x="495.4" y="437.5" width="4.5" height="11.0" rx="2.2" fill="#7FE0C7"/><rect x="503.6" y="433.8" width="4.5" height="18.5" rx="2.2" fill="#7FE0C7"/><rect x="511.8" y="431.4" width="4.5" height="23.3" rx="2.2" fill="#7FE0C7"/><rect x="520.0" y="432.3" width="4.5" height="21.3" rx="2.2" fill="#7FE0C7"/><rect x="528.2" y="434.8" width="4.5" height="16.4" rx="2.2" fill="#7FE0C7"/><rect x="536.4" y="428.0" width="4.5" height="30.1" rx="2.2" fill="#7FE0C7"/><rect x="544.6" y="429.9" width="4.5" height="26.1" rx="2.2" fill="#7FE0C7"/><rect x="552.8" y="436.1" width="4.5" height="13.8" rx="2.2" fill="#7FE0C7"/><rect x="561.0" y="431.9" width="4.5" height="22.3" rx="2.2" fill="#7FE0C7"/><rect x="569.2" y="427.7" width="4.5" height="30.6" rx="2.2" fill="#7FE0C7"/><rect x="577.4" y="431.7" width="4.5" height="22.7" rx="2.2" fill="#7FE0C7"/><rect x="585.6" y="434.2" width="4.5" height="17.7" rx="2.2" fill="#7FE0C7"/><rect x="593.8" y="428.3" width="4.5" height="29.4" rx="2.2" fill="#7FE0C7"/><rect x="602.0" y="430.0" width="4.5" height="26.1" rx="2.2" fill="#7FE0C7"/><rect x="610.2" y="437.1" width="4.5" height="11.8" rx="2.2" fill="#7FE0C7"/><rect x="618.4" y="431.7" width="4.5" height="22.6" rx="2.2" fill="#7FE0C7"/><rect x="626.6" y="430.8" width="4.5" height="24.5" rx="2.2" fill="#7FE0C7"/><rect x="634.8" y="435.4" width="4.5" height="15.1" rx="2.2" fill="#7FE0C7"/><rect x="643.0" y="437.2" width="4.5" height="11.7" rx="2.2" fill="#7FE0C7"/><rect x="651.2" y="433.0" width="4.5" height="20.0" rx="2.2" fill="#7FE0C7"/><rect x="659.4" y="435.7" width="4.5" height="14.5" rx="2.2" fill="#7FE0C7"/><rect x="667.6" y="439.9" width="4.5" height="6.2" rx="2.2" fill="#7FE0C7"/><rect x="675.8" y="437.9" width="4.5" height="10.2" rx="2.2" fill="#7FE0C7"/><rect x="684.0" y="438.9" width="4.5" height="8.2" rx="2.2" fill="#7FE0C7"/><rect x="692.2" y="441.0" width="4.5" height="4.0" rx="2.2" fill="#7FE0C7"/>
+<circle cx="732" cy="443.0" r="6" fill="#F6B070"/>
+<text x="746" y="449.0" font-family="'Cascadia Code','Cascadia Mono',ui-monospace,Consolas,Menlo,monospace" font-size="16" fill="#D2CDC2">00:07</text>
+<circle cx="818" cy="443.0" r="12" fill="#283D45"/>
+<path d="M813 438.0l10 10m0-10l-10 10" stroke="#A0B2B4" stroke-width="2" stroke-linecap="round"/>
+<rect x="920" y="292" width="310" height="182" rx="14" fill="#1F323A"/>
+<text x="942" y="328" font-family="'Segoe UI Variable Text','Segoe UI',Inter,system-ui,-apple-system,Helvetica,Arial,sans-serif" font-size="14" font-weight="600" letter-spacing="1.4" fill="#A0B2B4">OUTLOOK · E-MAIL</text>
+<line x1="920" y1="346" x2="1230" y2="346" stroke="#35474E"/>
+<text font-family="'Segoe UI Variable Text','Segoe UI',Inter,system-ui,-apple-system,Helvetica,Arial,sans-serif" font-size="17" fill="#F1ECE3"><tspan x="942" y="384">Hallo Jana,</tspan><tspan x="942" y="414">passt dir Donnerstag um zehn?</tspan><tspan x="942" y="444">Viele Grüße</tspan></text>
+<rect x="1042" y="428" width="2" height="21" fill="#7FE0C7"/>
+<rect x="1102" y="274" width="112" height="34" rx="17" fill="#1D4841"/>
+<path d="M1124 291l4-9 4 9 9 4-9 4-4 9-4-9-9-4z" fill="#7FE0C7" transform="translate(0 -4) scale(1)" />
+<text x="1144" y="297" font-family="'Segoe UI Variable Text','Segoe UI',Inter,system-ui,-apple-system,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#7FE0C7">Enhance</text>
+<rect x="920" y="118" width="106.8" height="32" rx="16" fill="none" stroke="#35474E"/><text x="973.4" y="139" text-anchor="middle" font-family="'Segoe UI Variable Text','Segoe UI',Inter,system-ui,-apple-system,Helvetica,Arial,sans-serif" font-size="15" fill="#A0B2B4">Parakeet</text>
+<rect x="1036.8" y="118" width="97.2" height="32" rx="16" fill="none" stroke="#35474E"/><text x="1085.3999999999999" y="139" text-anchor="middle" font-family="'Segoe UI Variable Text','Segoe UI',Inter,system-ui,-apple-system,Helvetica,Arial,sans-serif" font-size="15" fill="#A0B2B4">Whisper</text>
+<rect x="1144.0" y="118" width="97.2" height="32" rx="16" fill="none" stroke="#35474E"/><text x="1192.6" y="139" text-anchor="middle" font-family="'Segoe UI Variable Text','Segoe UI',Inter,system-ui,-apple-system,Helvetica,Arial,sans-serif" font-size="15" fill="#A0B2B4">Gemma 4</text>
+<text x="920" y="186" font-family="'Segoe UI Variable Text','Segoe UI',Inter,system-ui,-apple-system,Helvetica,Arial,sans-serif" font-size="15" fill="#A0B2B4">Modelle laufen auf deinem Rechner,</text>
+<text x="920" y="208" font-family="'Segoe UI Variable Text','Segoe UI',Inter,system-ui,-apple-system,Helvetica,Arial,sans-serif" font-size="15" fill="#A0B2B4">beschleunigt per Vulkan-GPU.</text>
+</svg>
