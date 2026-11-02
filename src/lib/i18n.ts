@@ -216,7 +216,7 @@ const de = {
   "stats.since": "Seit {date}",
 
   "meet.title": "Meetings",
-  "meet.subtitle": "Nimmt Mikrofon und/oder PC-Audio auf, transkribiert live und trennt danach nach Sprechern.",
+  "meet.subtitle": "Nimmt Mikrofon und/oder PC-Audio auf, transkribiert live und trennt danach nach Sprechern. Mit beiden Quellen bist du am Mikrofon automatisch „Ich“.",
   "meet.start": "Meeting starten",
   "meet.stop": "Meeting beenden",
   "meet.source": "Quelle",
@@ -583,7 +583,7 @@ const en: Record<Key, string> = {
   "stats.since": "Since {date}",
 
   "meet.title": "Meetings",
-  "meet.subtitle": "Records your microphone and/or PC audio, transcribes live and splits by speaker afterwards.",
+  "meet.subtitle": "Records your microphone and/or PC audio, transcribes live and splits by speaker afterwards. With both sources, your microphone is automatically “Me”.",
   "meet.start": "Start meeting",
   "meet.stop": "Stop meeting",
   "meet.source": "Source",

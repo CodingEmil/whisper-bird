@@ -1,4 +1,5 @@
 pub mod decode;
+pub mod echo;
 pub mod ducking;
 pub mod loopback;
 pub mod mic;

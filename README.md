@@ -12,7 +12,7 @@ Rust-Backend (Tauri 2) mit React/TypeScript-Oberfläche.
 | **Modelle** | Parakeet Ultra (Standard), Parakeet v3, Qwen3-ASR 1.7B/0.6B, Canary 1B v2, Parakeet English, Whisper Tiny bis Large v3 – lokal über transcribe.cpp mit Vulkan-GPU. |
 | **Enhance** | Grammatik, Zeichensetzung, Füllwörter, Selbstkorrekturen, app-gerechte Formatierung (E-Mail, Chat, Code …). Lokal mit Gemma 4 (llama.cpp), per CLI (Claude Code, Codex, Gemini) oder OpenAI-kompatibler API. Immer an oder über einen zweiten Shortcut. Fällt bei Fehlern auf den Rohtext zurück. |
 | **Text bearbeiten** | Markierten Text in jeder App per Shortcut verbessern, kürzen, erweitern, Ton ändern, als Liste formatieren, übersetzen – oder eigene Anweisung tippen bzw. sprechen. |
-| **Meetings** | Mikrofon und/oder PC-Audio (WASAPI-Loopback), Live-Transkript, danach Sprechererkennung (Sortformer), umbenennbare Sprecher, automatische Notizen, Export als PDF oder Text. |
+| **Meetings** | Mikrofon und/oder PC-Audio (WASAPI-Loopback), Live-Transkript, danach Sprechererkennung (Sortformer), umbenennbare Sprecher, automatische Notizen, Export als PDF oder Text. Mit beiden Quellen bleiben die Spuren getrennt: Das Mikrofon ist „Ich“ (Lautsprecher-Echo wird herausgefiltert), nur die Gegenseite wird nach Sprechern aufgeteilt. |
 | **Dateien** | Audio/Video oder ganze Ordner per Drag & Drop – eine Textdatei pro Aufnahme, im Hintergrund mit Fortschritt. |
 | **Wörter** | Custom Words (unscharfe Korrektur und Modell-Vokabular), Snippets (gesprochener Auslöser → fester Text). |
 | **Verlauf & Statistik** | Suche, Filter nach Quelle und Datum, Doppelklick kopiert; Wörter, Dauer, gesparte Zeit, Sprachen, 30-Tage-Verlauf. |
@@ -59,6 +59,7 @@ Die End-to-End-Tests (`src-tauri/src/e2e/`) arbeiten mit echtem Audio:
 - **VAD:** Pausen bleiben frei, Rauschen gilt nicht als Sprache.
 - **Meeting mit vier Personen:** 5 Minuten aus dem AMI-Meeting ES2004a laufen wie vom Mikrofon ein (Live-Transkript), danach Sprechererkennung und Neutranskription wie in der App. Verglichen wird mit der AMI-Referenz, wer wann spricht: 4 Sprecher, Zuordnung und DER.
 - **Deutscher Dialog:** zwei Sprecher aus der Gesprochenen Wikipedia im Wechsel, mit exakt bekannten Sprecherwechseln. Geprüft wird auch, ob die Texte beim richtigen Sprecher landen.
+- **Getrennte Spuren:** derselbe Dialog, aber ein Sprecher am Mikrofon und einer im PC-Audio, das zusätzlich als Echo ins Mikrofon zurückläuft. Erwartet: „Ich“ und ein Sprecher der Gegenseite, ohne Echo-Text bei „Ich“.
 
 Der erste Lauf lädt Testaudio und Sortformer (~180 MB, mit Prüfsumme) nach
 `src-tauri\target\test-fixtures`. Bereits installierte Modelle der App werden nur

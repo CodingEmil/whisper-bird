@@ -1,5 +1,9 @@
 //! Meeting-Modus: Mikrofon und/oder System-Audio aufnehmen, live transkribieren,
 //! danach nach Sprechern aufteilen (Sortformer) und Notizen erzeugen.
+//!
+//! Laufen Mikrofon und PC-Audio zusammen, bleiben beide Spuren auch getrennt
+//! erhalten: Das Mikrofon ist „Ich“ (ohne Echo der Lautsprecher), nur die
+//! Gegenseite im PC-Audio wird nach Sprechern aufgeteilt.
 
 use crate::asr::{Asr, AsrOptions};
 use crate::audio::{self, loopback::Loopback, mic::MicRecording, sounds};
@@ -272,6 +276,10 @@ fn run(mut m: Meeting, stop: &AtomicBool) -> Result<(), Failure> {
         None
     };
     let have_sys = lb.is_some();
+    // Beide Quellen da: Spuren zusätzlich getrennt behalten (16 Bit, halber Speicher).
+    let separate = mic.is_some() && have_sys;
+    let mut mic_track: Vec<i16> = Vec::new();
+    let mut sys_track: Vec<i16> = Vec::new();
 
     let started = Instant::now();
     let mut full: Vec<f32> = Vec::with_capacity(SR * 60 * 30);
@@ -315,6 +323,10 @@ fn run(mut m: Meeting, stop: &AtomicBool) -> Result<(), Failure> {
             Vec::new()
         };
         full.extend(mix(&mic_chunk, &sys_chunk, n));
+        if separate {
+            push_track(&mut mic_track, &mic_chunk, n);
+            push_track(&mut sys_track, &sys_chunk, n);
+        }
         m.duration_ms = (full.len() / 16) as i64;
         let _ = st.app.emit(
             "meeting-level",
@@ -364,9 +376,18 @@ fn run(mut m: Meeting, stop: &AtomicBool) -> Result<(), Failure> {
     let progress = move |p: f32| {
         let _ = state().app.emit("meeting-progress", (meeting_id.clone(), p));
     };
-    let diarized = match st.model_file(catalog::DIARIZE_MODEL).filter(|p| p.exists()) {
-        Some(model) => diarize_and_retranscribe(&st.asr, &model, &full, &opts, s.remove_fillers, &progress),
-        None => Ok(None),
+    let diarize_model = st.model_file(catalog::DIARIZE_MODEL).filter(|p| p.exists());
+    let diarized = if separate {
+        // Speicher sparen: Die Mischung ist gespeichert, die Spuren werden zu f32.
+        drop(full);
+        let mic_pcm = track_f32(&std::mem::take(&mut mic_track));
+        let sys_pcm = track_f32(&std::mem::take(&mut sys_track));
+        diarize_tracks(&st.asr, diarize_model.as_deref(), &mic_pcm, &sys_pcm, &opts, s.remove_fillers, &progress)
+    } else {
+        match diarize_model {
+            Some(model) => diarize_and_retranscribe(&st.asr, &model, &full, &opts, s.remove_fillers, &progress),
+            None => Ok(None),
+        }
     };
     assign_speakers(&mut m, diarized, &s.ui_language);
     m.status = "done".into();
@@ -412,6 +433,18 @@ pub fn mix(mic: &[f32], sys: &[f32], n: usize) -> Vec<f32> {
             (a + b).clamp(-1.0, 1.0)
         })
         .collect()
+}
+
+/// Hängt einen Block an eine Einzelspur an, auf `n` Samples aufgefüllt – so bleiben
+/// beide Spuren auf die Sample genau neben der Mischung.
+pub fn push_track(track: &mut Vec<i16>, chunk: &[f32], n: usize) {
+    track.extend(
+        (0..n).map(|i| (chunk.get(i).copied().unwrap_or(0.0).clamp(-1.0, 1.0) * i16::MAX as f32) as i16),
+    );
+}
+
+pub fn track_f32(track: &[i16]) -> Vec<f32> {
+    track.iter().map(|&v| v as f32 / i16::MAX as f32).collect()
 }
 
 /// Zerlegt das laufende Meeting-Audio an Sprechpausen in Abschnitte fürs Live-Transkript.
@@ -493,14 +526,26 @@ fn tidy(text: &str, opts: &AsrOptions, remove_fillers: bool) -> String {
     crate::text::apply_custom_words(&crate::text::clean(text, remove_fillers), opts.vocabulary)
 }
 
+/// Ergebnis der Sprechererkennung.
+#[derive(Debug)]
+pub struct Diarized {
+    pub segments: Vec<Segment>,
+    /// Sprecher 0 ist das eigene Mikrofon („Ich“).
+    pub me: bool,
+}
+
 /// Übernimmt das Ergebnis der Sprechererkennung – oder ordnet alles einem Sprecher zu.
-pub fn assign_speakers(m: &mut Meeting, diarized: anyhow::Result<Option<Vec<Segment>>>, ui_language: &str) {
+pub fn assign_speakers(m: &mut Meeting, diarized: anyhow::Result<Option<Diarized>>, ui_language: &str) {
     let name = |i: i32| format!("{} {i}", t(ui_language, "speaker"));
     match diarized {
-        Ok(Some(segments)) if !segments.is_empty() => {
-            let speakers = segments.iter().map(|s| s.speaker).max().unwrap_or(0) + 1;
-            m.speakers = (1..=speakers).map(name).collect();
-            m.segments = segments;
+        Ok(Some(d)) if !d.segments.is_empty() => {
+            let speakers = d.segments.iter().map(|s| s.speaker).max().unwrap_or(0) + 1;
+            m.speakers = if d.me {
+                std::iter::once(t(ui_language, "me")).chain((1..speakers).map(name)).collect()
+            } else {
+                (1..=speakers).map(name).collect()
+            };
+            m.segments = d.segments;
             m.diarized = true;
             return;
         }
@@ -522,30 +567,99 @@ pub fn diarize_and_retranscribe(
     opts: &AsrOptions,
     remove_fillers: bool,
     progress: &dyn Fn(f32),
-) -> anyhow::Result<Option<Vec<Segment>>> {
+) -> anyhow::Result<Option<Diarized>> {
     if pcm.len() < SR * 2 {
         return Ok(None);
     }
     progress(0.0);
-    let model = transcribe_cpp::Model::load(model)?;
-    let mut session = model.diarize_session()?;
-    let turns = session.run(pcm, &transcribe_cpp::DiarizeOptions::default())?;
-    drop(session);
-    drop(model);
-    let turns = clean_turns(
-        turns.into_iter().map(|t| (t.t0_ms, t.t1_ms, t.speaker_id)).collect(),
-        pcm.len() as i64 / 16,
-    );
+    let turns = sortformer_turns(model, pcm)?;
     if turns.is_empty() {
         return Ok(None);
     }
     progress(0.1);
+    let turns: Vec<Turn> = turns.into_iter().map(|(t0, t1, speaker)| (t0, t1, speaker, pcm)).collect();
+    let segments = transcribe_turns(asr, &turns, opts, remove_fillers, &|p| progress(0.1 + 0.9 * p))?;
+    Ok(Some(Diarized { segments, me: false }))
+}
+
+/// Getrennte Spuren: Das Mikrofon ist „Ich“ – ohne die Passagen, in denen es nur
+/// die Lautsprecher mithört. Das PC-Audio wird mit `model` nach Sprechern
+/// aufgeteilt, ohne Modell gilt es als ein Sprecher. Jede Passage wird aus
+/// ihrer eigenen Spur transkribiert, so stört die andere Seite nicht.
+pub fn diarize_tracks(
+    asr: &Asr,
+    model: Option<&Path>,
+    mic: &[f32],
+    sys: &[f32],
+    opts: &AsrOptions,
+    remove_fillers: bool,
+    progress: &dyn Fn(f32),
+) -> anyhow::Result<Option<Diarized>> {
+    if mic.len().max(sys.len()) < SR * 2 {
+        return Ok(None);
+    }
+    progress(0.0);
+    let to_ms = |r: &(usize, usize)| ((r.0 / 16) as i64, (r.1 / 16) as i64);
+    let own = audio::echo::own_speech(mic, sys, &asr.speech_segments(mic, 0)?);
+    let mic_turns = merge_turns(own.iter().map(|r| { let (a, b) = to_ms(r); (a, b, 0) }).collect());
+
+    let sys_turns = match model.filter(|_| sys.len() >= SR * 2) {
+        Some(model) => match sortformer_turns(model, sys) {
+            Ok(turns) => Some(turns),
+            Err(e) => {
+                log::warn!("Sprechererkennung im PC-Audio fehlgeschlagen, ein Sprecher: {e:#}");
+                None
+            }
+        },
+        None => None,
+    };
+    let sys_turns = match sys_turns {
+        Some(turns) if !turns.is_empty() => turns,
+        _ => merge_turns(asr.speech_segments(sys, 0)?.iter().map(|r| { let (a, b) = to_ms(r); (a, b, 0) }).collect()),
+    };
+    progress(0.1);
+
+    let me = !mic_turns.is_empty();
+    let offset = me as i32;
+    let mut turns: Vec<Turn> = mic_turns.into_iter().map(|(a, b, sp)| (a, b, sp, mic)).collect();
+    turns.extend(sys_turns.into_iter().map(|(a, b, sp)| (a, b, sp + offset, sys)));
+    turns.sort_by_key(|t| (t.0, t.2));
+    if turns.is_empty() {
+        return Ok(None);
+    }
+    let mut segments = transcribe_turns(asr, &turns, opts, remove_fillers, &|p| progress(0.1 + 0.9 * p))?;
+    let me = renumber(&mut segments, me);
+    Ok(Some(Diarized { segments, me }))
+}
+
+/// Eine Sprecherpassage: Beginn und Ende in ms, Sprecher, Spur.
+type Turn<'a> = (i64, i64, i32, &'a [f32]);
+
+fn sortformer_turns(model: &Path, pcm: &[f32]) -> anyhow::Result<Vec<(i64, i64, i32)>> {
+    let model = transcribe_cpp::Model::load(model)?;
+    let mut session = model.diarize_session()?;
+    let turns = session.run(pcm, &transcribe_cpp::DiarizeOptions::default())?;
+    Ok(clean_turns(
+        turns.into_iter().map(|t| (t.t0_ms, t.t1_ms, t.speaker_id)).collect(),
+        pcm.len() as i64 / 16,
+    ))
+}
+
+/// Transkribiert jede Passage aus ihrer Spur; `progress` läuft von 0 bis 1.
+fn transcribe_turns(
+    asr: &Asr,
+    turns: &[Turn],
+    opts: &AsrOptions,
+    remove_fillers: bool,
+    progress: &dyn Fn(f32),
+) -> anyhow::Result<Vec<Segment>> {
     let total: i64 = turns.iter().map(|t| t.1 - t.0).sum::<i64>().max(1);
     let mut done = 0i64;
     let mut out = Vec::new();
-    for (t0, t1, speaker) in turns {
+    for &(t0, t1, speaker, pcm) in turns {
         let a = (t0 as usize * 16).min(pcm.len());
         let b = (t1 as usize * 16).min(pcm.len());
+        done += t1 - t0;
         if b <= a + SR / 4 {
             continue;
         }
@@ -560,10 +674,35 @@ pub fn diarize_and_retranscribe(
                 text,
             });
         }
-        done += t1 - t0;
-        progress(0.1 + 0.9 * done as f32 / total as f32);
+        progress(done as f32 / total as f32);
     }
-    Ok(Some(out))
+    Ok(out)
+}
+
+/// Fasst Passagen desselben Sprechers mit weniger als 1,5 s Pause zusammen.
+fn merge_turns(turns: Vec<(i64, i64, i32)>) -> Vec<(i64, i64, i32)> {
+    let mut merged: Vec<(i64, i64, i32)> = Vec::new();
+    for t in turns {
+        if let Some(last) = merged.last_mut() {
+            if last.2 == t.2 && t.0 - last.1 < 1_500 {
+                last.1 = last.1.max(t.1);
+                continue;
+            }
+        }
+        merged.push(t);
+    }
+    merged
+}
+
+/// Lückenlose Sprechernummern, „Ich“ bleibt vorn. Liefert, ob „Ich“ noch vorkommt.
+fn renumber(segments: &mut [Segment], me: bool) -> bool {
+    let mut used: Vec<i32> = segments.iter().map(|s| s.speaker).collect();
+    used.sort_unstable();
+    used.dedup();
+    for seg in segments.iter_mut() {
+        seg.speaker = used.iter().position(|&u| u == seg.speaker).unwrap_or(0) as i32;
+    }
+    me && used.first() == Some(&0)
 }
 
 /// Glättet Sprecher-Turns: winzige „Sprecher“ (Lachen, Musik) dem Nachbarn
@@ -590,16 +729,7 @@ fn clean_turns(mut turns: Vec<(i64, i64, i32)>, total_ms: i64) -> Vec<(i64, i64,
             }
         }
     }
-    let mut merged: Vec<(i64, i64, i32)> = Vec::new();
-    for t in turns {
-        if let Some(last) = merged.last_mut() {
-            if last.2 == t.2 && t.0 - last.1 < 1_500 {
-                last.1 = last.1.max(t.1);
-                continue;
-            }
-        }
-        merged.push(t);
-    }
+    let merged = merge_turns(turns);
     let mut order: Vec<i32> = Vec::new();
     for t in &merged {
         if !order.contains(&t.2) {
@@ -702,10 +832,43 @@ mod tests {
     fn transkript_fasst_sprecher_zusammen() {
         let mut m = meeting(Vec::new());
         let diarized = vec![seg(0, 0, "Guten Tag."), seg(1000, 0, "Los geht's."), seg(2000, 1, "Hallo.")];
-        assign_speakers(&mut m, Ok(Some(diarized)), "de");
+        assign_speakers(&mut m, Ok(Some(Diarized { segments: diarized, me: false })), "de");
         assert!(m.diarized);
         assert_eq!(m.speakers, vec!["Sprecher 1", "Sprecher 2"]);
         assert_eq!(transcript_text(&m), "Sprecher 1: Guten Tag. Los geht's.\n\nSprecher 2: Hallo.");
+    }
+
+    #[test]
+    fn eigenes_mikrofon_heisst_ich() {
+        let mut m = meeting(Vec::new());
+        let diarized = vec![seg(0, 0, "Wie war's?"), seg(1000, 1, "Gut."), seg(2000, 2, "Sehr gut.")];
+        assign_speakers(&mut m, Ok(Some(Diarized { segments: diarized, me: true })), "de");
+        assert_eq!(m.speakers, vec!["Ich", "Sprecher 1", "Sprecher 2"]);
+        assert_eq!(transcript_text(&m), "Ich: Wie war's?\n\nSprecher 1: Gut.\n\nSprecher 2: Sehr gut.");
+    }
+
+    #[test]
+    fn nummern_ohne_luecken() {
+        // Sprecher 2 hat nichts Verständliches gesagt.
+        let mut segs = vec![seg(0, 0, "a"), seg(1000, 3, "b"), seg(2000, 1, "c")];
+        assert!(renumber(&mut segs, true));
+        assert_eq!(segs.iter().map(|s| s.speaker).collect::<Vec<_>>(), vec![0, 2, 1]);
+        // Vom Mikrofon kam nichts: „Ich“ entfällt.
+        let mut segs = vec![seg(0, 1, "a"), seg(1000, 2, "b")];
+        assert!(!renumber(&mut segs, true));
+        assert_eq!(segs.iter().map(|s| s.speaker).collect::<Vec<_>>(), vec![0, 1]);
+    }
+
+    #[test]
+    fn spuren_bleiben_deckungsgleich() {
+        let mut mic = Vec::new();
+        let mut sys = Vec::new();
+        push_track(&mut mic, &[0.5, -1.5, 0.25], 3);
+        push_track(&mut sys, &[0.5], 3);
+        assert_eq!((mic.len(), sys.len()), (3, 3));
+        assert_eq!(sys[1..], [0, 0]);
+        let back = track_f32(&mic);
+        assert!((back[0] - 0.5).abs() < 1e-3 && back[1] == -1.0 && (back[2] - 0.25).abs() < 1e-3);
     }
 
     #[test]

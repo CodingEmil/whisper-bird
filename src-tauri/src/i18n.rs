@@ -32,6 +32,7 @@ pub fn t(lang: &str, key: &str) -> String {
         "files_done" => if de { "Fertig" } else { "Done" },
         "files_failed" => if de { "Datei konnte nicht transkribiert werden" } else { "Could not transcribe file" },
         "speaker" => if de { "Sprecher" } else { "Speaker" },
+        "me" => if de { "Ich" } else { "Me" },
         "meeting_title" => if de { "Meeting" } else { "Meeting" },
         _ => key,
     };

@@ -1,11 +1,13 @@
 //! Meeting-Modus mit echtem Audio: Das Audio läuft wie vom Mikrofon in
 //! 100-ms-Blöcken ein (Live-Transkript), danach folgen Sprechererkennung und
-//! Neutranskription wie in `meeting::run`.
+//! Neutranskription wie in `meeting::run`. Mit getrennten Spuren laufen
+//! Mikrofon und PC-Audio einzeln ein, das Mikrofon hört die Lautsprecher mit.
 
 use super::*;
 use crate::asr::AsrOptions;
 use crate::meeting::{
-    assign_speakers, diarize_and_retranscribe, live_segment, mix, transcript_text, LiveCutter, Meeting, Segment,
+    assign_speakers, diarize_and_retranscribe, diarize_tracks, live_segment, mix, push_track, track_f32, transcript_text,
+    LiveCutter, Meeting, Segment,
 };
 use crate::settings::MeetingSource;
 use std::cell::Cell;
@@ -21,6 +23,13 @@ struct Recorded {
 }
 
 fn record(pcm: &[f32], language: Option<&str>) -> Recorded {
+    record_tracks(pcm, &[], language)
+}
+
+/// Wie `meeting::run`: `mic` und `sys` laufen in 100-ms-Blöcken ein. Ist `sys`
+/// leer, gibt es nur eine Spur (Mikrofon), sonst zusätzlich die getrennten Spuren.
+fn record_tracks(mic: &[f32], sys: &[f32], language: Option<&str>) -> Recorded {
+    let separate = !sys.is_empty();
     let asr = asr();
     let diarize_model = model(catalog::DIARIZE_MODEL);
     let opts = AsrOptions {
@@ -42,29 +51,43 @@ fn record(pcm: &[f32], language: Option<&str>) -> Recorded {
         diarized: false,
     };
     let mut full = Vec::new();
+    let (mut mic_track, mut sys_track) = (Vec::new(), Vec::new());
     let mut live = LiveCutter::default();
-    let blocks: Vec<&[f32]> = pcm.chunks(SR / 10).collect();
+    let len = mic.len().max(sys.len());
+    let starts: Vec<usize> = (0..len).step_by(SR / 10).collect();
     let started = Instant::now();
-    for (i, block) in blocks.iter().enumerate() {
-        let stopping = i + 1 == blocks.len();
-        full.extend(mix(block, &[], block.len()));
+    for (i, &a) in starts.iter().enumerate() {
+        let stopping = i + 1 == starts.len();
+        let n = (len - a).min(SR / 10);
+        let block = |x: &[f32]| x.get(a..(a + n).min(x.len())).unwrap_or(&[]).to_vec();
+        let (mic_block, sys_block) = (block(mic), block(sys));
+        full.extend(mix(&mic_block, &sys_block, n));
+        if separate {
+            push_track(&mut mic_track, &mic_block, n);
+            push_track(&mut sys_track, &sys_block, n);
+        }
         if let Some(range) = live.next(&full, asr, stopping) {
             if let Some(seg) = live_segment(asr, &full, range, &opts, true).unwrap() {
                 m.segments.push(seg);
             }
         }
     }
-    let live_rtf = started.elapsed().as_secs_f64() / seconds(pcm);
+    let live_rtf = started.elapsed().as_secs_f64() / seconds(&full);
     m.duration_ms = (full.len() / 16) as i64;
     m.status = "processing".into();
     let live_segments = m.segments.clone();
 
     let started = Instant::now();
     let progress = Cell::new(0.0f32);
-    let diarized = diarize_and_retranscribe(asr, &diarize_model, &full, &opts, true, &|p| {
+    let check = |p: f32| {
         assert!(p >= progress.get(), "Fortschritt läuft rückwärts");
         progress.set(p);
-    });
+    };
+    let diarized = if separate {
+        diarize_tracks(asr, Some(&diarize_model), &track_f32(&mic_track), &track_f32(&sys_track), &opts, true, &check)
+    } else {
+        diarize_and_retranscribe(asr, &diarize_model, &full, &opts, true, &check)
+    };
     if let Err(e) = &diarized {
         panic!("Sprechererkennung fehlgeschlagen: {e:#}");
     }
@@ -74,7 +97,7 @@ fn record(pcm: &[f32], language: Option<&str>) -> Recorded {
         meeting: m,
         live: live_segments,
         live_rtf,
-        post_rtf: started.elapsed().as_secs_f64() / seconds(pcm),
+        post_rtf: started.elapsed().as_secs_f64() / seconds(&full),
     }
 }
 
@@ -101,7 +124,8 @@ fn check_consistency(r: &Recorded, max_drift: f64) {
     assert!(m.segments.windows(2).all(|w| w[0].start_ms <= w[1].start_ms), "Abschnitte nicht sortiert");
     assert!(m.segments.iter().all(|s| s.start_ms < s.end_ms && s.end_ms <= m.duration_ms + 100 && !s.text.is_empty()));
     assert!(m.segments.iter().all(|s| (0..m.speakers.len() as i32).contains(&s.speaker)));
-    assert!(transcript_text(m).starts_with("Sprecher 1: "), "{}", transcript_text(m));
+    let first = format!("{}: ", m.speakers[0]);
+    assert!(transcript_text(m).starts_with(&first), "{}", transcript_text(m));
 
     // Speichern und Laden (meeting.json) verliert nichts.
     let back: Meeting = serde_json::from_slice(&serde_json::to_vec_pretty(m).unwrap()).unwrap();
@@ -228,4 +252,78 @@ fn deutscher_dialog_mit_zwei_sprechern() {
     assert!(d.der <= 0.1, "DER {:.2}", d.der);
     assert_eq!(text_wer.len(), 2);
     assert!(worst_text_wer <= 0.15, "Texte landen beim falschen Sprecher (WER {text_wer:?})");
+}
+
+/// Was ein Laptop-Mikrofon von den Lautsprechern mitbekommt: leiser, verzögert,
+/// leicht verwaschen, dazu Grundrauschen.
+fn speaker_echo(sys: &[f32], delay_ms: usize, gain: f32) -> Vec<f32> {
+    let d = delay_ms * 16;
+    let mut state = 0x2545_F491_4F6C_DD1Du64;
+    let mut prev = 0.0f32;
+    (0..sys.len())
+        .map(|i| {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            let hiss = ((state >> 40) as f32 / (1u64 << 24) as f32 - 0.5) * 0.004;
+            let x = if i >= d { sys[i - d] } else { 0.0 };
+            prev = 0.6 * prev + 0.4 * x; // Tiefpass: kleiner Lautsprecher, Raum
+            prev * gain + hiss
+        })
+        .collect()
+}
+
+#[test]
+#[ignore = "braucht Modelle und Testaudio – scripts/test.ps1"]
+fn getrennte_spuren_ich_und_gegenseite() {
+    let bierkrieg = load_audio(&fixture(&DE_BIERKRIEG));
+    let magic8 = load_audio(&fixture(&DE_MAGIC8));
+    let (pcm, reference) = dialog(&[(&bierkrieg, "ich"), (&magic8, "gegenseite")], &[16.0, 12.0, 20.0, 9.0, 14.0, 18.0, 11.0, 15.0]);
+    // Ich spreche ins Mikrofon, die Gegenseite kommt über das PC-Audio – und aus
+    // den Lautsprechern zurück ins Mikrofon (kein Headset).
+    let mut mic = vec![0.0f32; pcm.len()];
+    let mut sys = vec![0.0f32; pcm.len()];
+    for t in &reference {
+        let target = if t.2 == "ich" { &mut mic } else { &mut sys };
+        target[range_ms(t)].copy_from_slice(&pcm[range_ms(t)]);
+    }
+    for (m, e) in mic.iter_mut().zip(speaker_echo(&sys, 70, 0.25)) {
+        *m += e;
+    }
+    let mut expected: Vec<(String, String)> = Vec::new();
+    for t in &reference {
+        let parts = asr()
+            .transcribe_long(&pcm[range_ms(t)], &AsrOptions { language: None, vocabulary: &[], cancel: None }, &mut |_| {})
+            .unwrap();
+        expected.push((t.2.clone(), parts.iter().map(|p| p.text.as_str()).collect::<Vec<_>>().join(" ")));
+    }
+
+    let r = record_tracks(&mic, &sys, None);
+    let d = score_diarization(&reference, &turns(&r.meeting));
+    println!("{}", transcript_text(&r.meeting));
+    let said = |name: &str| text_of(r.meeting.segments.iter().filter(|s| r.meeting.speakers[s.speaker as usize] == name));
+    let want = |name: &str| expected.iter().filter(|e| e.0 == name).map(|e| e.1.as_str()).collect::<Vec<_>>().join(" ");
+    let me_wer = wer(&want("ich"), &said("Ich"));
+    let other_wer = wer(&want("gegenseite"), &said("Sprecher 1"));
+    report(
+        "meeting_getrennte_spuren",
+        &[
+            ("sprecher", d.hyp_speakers as f64),
+            ("zuordnung", d.accuracy),
+            ("der", d.der),
+            ("ich_wer", me_wer),
+            ("gegenseite_wer", other_wer),
+            ("live_echtzeitfaktor", r.live_rtf),
+            ("nachbearbeitung_echtzeitfaktor", r.post_rtf),
+        ],
+    );
+    // Das Live-Transkript läuft über die Mischung, das Endergebnis über die Einzelspuren.
+    check_consistency(&r, 0.2);
+    assert_eq!(r.meeting.speakers, vec!["Ich", "Sprecher 1"]);
+    assert!(d.mapping.contains(&("Ich".into(), "ich".into())), "{:?}", d.mapping);
+    assert!(d.accuracy >= 0.95, "Sprecher-Zuordnung nur {:.0} %", d.accuracy * 100.0);
+    assert!(d.der <= 0.1, "DER {:.2}", d.der);
+    // Das Echo der Gegenseite darf nicht als „Ich“ im Transkript landen.
+    assert!(me_wer <= 0.15, "„Ich“ weicht ab (WER {me_wer:.2}): {}", said("Ich"));
+    assert!(other_wer <= 0.15, "Gegenseite weicht ab (WER {other_wer:.2})");
 }
