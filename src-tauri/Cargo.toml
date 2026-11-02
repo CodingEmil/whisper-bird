@@ -43,6 +43,7 @@ symphonia = { version = "0.5", features = ["all"] }
 handy-recorder = "0.1"
 handy-keys = "0.3.4"
 transcribe-cpp = { version = "0.4.1", default-features = false, features = ["vulkan"] }
+aec3 = "0.4"
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.62", features = [

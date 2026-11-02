@@ -380,9 +380,9 @@ fn run(mut m: Meeting, stop: &AtomicBool) -> Result<(), Failure> {
     let diarized = if separate {
         // Speicher sparen: Die Mischung ist gespeichert, die Spuren werden zu f32.
         drop(full);
-        let mic_pcm = track_f32(&std::mem::take(&mut mic_track));
+        let mut mic_pcm = track_f32(&std::mem::take(&mut mic_track));
         let sys_pcm = track_f32(&std::mem::take(&mut sys_track));
-        diarize_tracks(&st.asr, diarize_model.as_deref(), &mic_pcm, &sys_pcm, &opts, s.remove_fillers, &progress)
+        diarize_tracks(&st.asr, diarize_model.as_deref(), &mut mic_pcm, &sys_pcm, &opts, s.remove_fillers, &progress)
     } else {
         match diarize_model {
             Some(model) => diarize_and_retranscribe(&st.asr, &model, &full, &opts, s.remove_fillers, &progress),
@@ -582,14 +582,15 @@ pub fn diarize_and_retranscribe(
     Ok(Some(Diarized { segments, me: false }))
 }
 
-/// Getrennte Spuren: Das Mikrofon ist „Ich“ – ohne die Passagen, in denen es nur
-/// die Lautsprecher mithört. Das PC-Audio wird mit `model` nach Sprechern
-/// aufgeteilt, ohne Modell gilt es als ein Sprecher. Jede Passage wird aus
-/// ihrer eigenen Spur transkribiert, so stört die andere Seite nicht.
+/// Getrennte Spuren: Das Mikrofon ist „Ich“. Zuerst wird das Lautsprecher-Echo
+/// aus `mic` abgezogen (an Ort und Stelle), danach fallen Passagen weg, in denen
+/// es nur noch die Lautsprecher mithört. Das PC-Audio wird mit `model` nach
+/// Sprechern aufgeteilt, ohne Modell gilt es als ein Sprecher. Jede Passage wird
+/// aus ihrer eigenen Spur transkribiert, so stört die andere Seite nicht.
 pub fn diarize_tracks(
     asr: &Asr,
     model: Option<&Path>,
-    mic: &[f32],
+    mic: &mut [f32],
     sys: &[f32],
     opts: &AsrOptions,
     remove_fillers: bool,
@@ -599,6 +600,10 @@ pub fn diarize_tracks(
         return Ok(None);
     }
     progress(0.0);
+    if let Err(e) = audio::echo::cancel(mic, sys) {
+        log::warn!("Echounterdrückung fehlgeschlagen, nur Echo-Erkennung: {e:#}");
+    }
+    let mic: &[f32] = mic;
     let to_ms = |r: &(usize, usize)| ((r.0 / 16) as i64, (r.1 / 16) as i64);
     let own = audio::echo::own_speech(mic, sys, &asr.speech_segments(mic, 0)?);
     let mic_turns = merge_turns(own.iter().map(|r| { let (a, b) = to_ms(r); (a, b, 0) }).collect());

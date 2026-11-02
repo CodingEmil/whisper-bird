@@ -1,9 +1,10 @@
-//! Echo im Mikrofon erkennen: Ohne Headset nimmt das Mikrofon auf, was die
-//! Lautsprecher abspielen. Diese Passagen gehören nicht zur eigenen Stimme.
+//! Echo im Mikrofon: Ohne Headset nimmt das Mikrofon auf, was die Lautsprecher
+//! abspielen. Das gehört nicht zur eigenen Stimme.
 //!
-//! Erkannt wird das am Lautstärkeverlauf: Ein Echo folgt dem PC-Audio mit kurzer
-//! Verzögerung (Raum, Treiber). Sprechen beide gleichzeitig, passt der Verlauf
-//! nicht mehr, die Passage bleibt also erhalten.
+//! Zuerst zieht `cancel` das PC-Audio aus dem Mikrofon ab (WebRTC AEC3). Was
+//! danach noch übrig ist, erkennt `own_speech` am Lautstärkeverlauf: Ein Echo
+//! folgt dem PC-Audio mit kurzer Verzögerung (Raum, Treiber). Sprechen beide
+//! gleichzeitig, passt der Verlauf nicht mehr, die Passage bleibt also erhalten.
 
 /// 20 ms bei 16 kHz.
 pub const FRAME: usize = 320;
@@ -15,12 +16,42 @@ const MAX_LAG_FRAMES: usize = 15;
 const ECHO_CORRELATION: f32 = 0.7;
 /// Ein Mikrofon-Frame gilt als laut, wenn er 10 dB über dem Grundrauschen liegt.
 const ACTIVE_ABOVE_FLOOR: f32 = 1.0;
-/// Erlaubte Streuung des Pegelabstands Mikrofon/PC-Audio bei einem Echo (log10, 0,4 = 4 dB).
-const MAX_GAIN_SPREAD: f32 = 0.4;
+/// Erlaubte Streuung des Pegelabstands Mikrofon/PC-Audio bei einem Echo (log10, 0,5 = 5 dB).
+/// Kleiner verwirft Echo durch dumpfe Lautsprecher nicht mehr, größer kostet leise eigene Stimme.
+const MAX_GAIN_SPREAD: f32 = 0.5;
 /// Unter diesem Pegel (log10 der mittleren Energie, entspricht RMS ≈ 0,003) ist das PC-Audio still.
 const SILENT: f32 = -5.0;
 /// Kürzere eigene Passagen fallen weg (Klicks, Atmen).
 const MIN_OWN: usize = 16_000 * 2 / 5;
+
+/// Zieht das Echo des PC-Audios `sys` aus dem Mikrofon `mic` ab, an Ort und Stelle
+/// (WebRTC AEC3, ohne Rauschunterdrückung und Pegelregelung). Die Verzögerung
+/// zwischen beiden Spuren schätzt AEC3 selbst; das PC-Audio muss aber vor seinem
+/// Echo liegen. Das Ergebnis ist um rund 8 ms verzögert – für Sprecherwechsel egal.
+pub fn cancel(mic: &mut [f32], sys: &[f32]) -> anyhow::Result<()> {
+    use aec3::nodes::audio::AudioFormat;
+    const STEP: usize = 160; // AEC3 arbeitet in 10-ms-Blöcken
+    let format = AudioFormat::ten_ms(16_000, 1);
+    let mut aec = aec3::pipelines::linear::builder(format, format)
+        .enable_noise_suppression(false)
+        .enable_gain_controller2(false)
+        .enable_post_filter(false)
+        .build()?;
+    let (mut m, mut s, mut o) = ([0.0f32; STEP], [0.0f32; STEP], [0.0f32; STEP]);
+    for (i, block) in mic.chunks_mut(STEP).enumerate() {
+        let n = block.len();
+        m[..n].copy_from_slice(block);
+        m[n..].fill(0.0);
+        let far = sys.get(i * STEP..).unwrap_or(&[]);
+        let k = far.len().min(STEP);
+        s[..k].copy_from_slice(&far[..k]);
+        s[k..].fill(0.0);
+        aec.handle_render_frame(&s)?;
+        aec.process_capture_frame(&m, &mut o)?;
+        block.copy_from_slice(&o[..n]);
+    }
+    Ok(())
+}
 
 /// Lautstärkeverlauf: log10 der mittleren Energie je 20-ms-Frame.
 pub fn envelope(x: &[f32]) -> Vec<f32> {
@@ -247,6 +278,24 @@ mod tests {
         assert_eq!(own.len(), 1, "{own:?}");
         assert_eq!(own[0].0, 0);
         assert!(own[0].1.abs_diff(6 * SR) <= SR, "{own:?}");
+    }
+
+    #[test]
+    fn aec_zieht_echo_ab_und_laesst_stimme() {
+        let energy = |x: &[f32]| x.iter().map(|v| v * v).sum::<f32>();
+        let sys = speech(10, 8);
+        let echo = echo_of(&sys, 70, 0.3);
+        let mut mic = echo.clone();
+        cancel(&mut mic, &sys).unwrap();
+        // Nach dem Einschwingen mindestens 10 dB leiser.
+        let erle = 10.0 * (energy(&echo[3 * SR..]) / energy(&mic[3 * SR..])).log10();
+        assert!(erle >= 10.0, "nur {erle:.1} dB");
+        // Ohne PC-Audio bleibt die eigene Stimme (bis auf den Hochpass) unverändert laut.
+        let own = voice(5, 9);
+        let mut mic = own.clone();
+        cancel(&mut mic, &[]).unwrap();
+        let ratio = energy(&mic) / energy(&own);
+        assert!((0.8..1.25).contains(&ratio), "Pegel {ratio:.2}");
     }
 
     #[test]

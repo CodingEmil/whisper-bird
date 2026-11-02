@@ -67,6 +67,45 @@ pub const DE_MAGIC8: Fixture = Fixture {
     sha256: "2a5179b5f8ef1fc1329060a4b9da92e93ba28abf77c756173b1aa9b303dc9db8",
 };
 
+macro_rules! aec_real {
+    ($id:literal, $kind:literal, $sha:literal) => {
+        Fixture {
+            file: concat!("aec-", $id, "-", $kind, ".wav"),
+            url: concat!(
+                "https://media.githubusercontent.com/media/microsoft/AEC-Challenge/8f861f0f8ffca26a3d1d16f17f2594ea89abe7ac/datasets/real/",
+                $id,
+                "_farend_singletalk_",
+                $kind,
+                ".wav"
+            ),
+            sha256: $sha,
+        }
+    };
+}
+
+/// Echtes Lautsprecher-Echo von vier Geräten aus der Microsoft AEC Challenge
+/// (Datensatz `real`, Nutzungsbedingungen laut Repo): je PC-Audio (Loopback) und
+/// was das Gerätemikrofon davon mithört, 11–13 s. Ausgewählt, weil die Echo-
+/// Erkennung allein hier versagte; Gerät 2 hat 600 ms Verzögerung.
+pub const AEC_REAL: [(Fixture, Fixture); 4] = [
+    (
+        aec_real!("-4ZzhygVJ0i2f7wMpKYIqg", "lpb", "9a4a2bea84cdc8c48bd393540324f786950914a3fdda88842199ddc8f64f27dc"),
+        aec_real!("-4ZzhygVJ0i2f7wMpKYIqg", "mic", "1317cf52b238295a1e7d9603fd81f7006e42e69c5be6ec5e868ff997ffcacf5b"),
+    ),
+    (
+        aec_real!("2ypYVnruCEyW5_JnxSWjjw", "lpb", "55e4ba75e62219be61a89a40293492c8421e035c91587ea016c30d51417cbbfc"),
+        aec_real!("2ypYVnruCEyW5_JnxSWjjw", "mic", "9d0f16690acb846e60b65479adb35269a91371b76e51c11677d34c400dee9701"),
+    ),
+    (
+        aec_real!("4rhNzDSuo0WYw_jeyJgDXw", "lpb", "42c55753df7deb82bf79e4c2715b9bbb9986210dedf21d43fe4ea064a3448f38"),
+        aec_real!("4rhNzDSuo0WYw_jeyJgDXw", "mic", "1b732f55494bab01c18a5d8a7da8d7c9b75a4df409f68e51ea19e3ec1f38b986"),
+    ),
+    (
+        aec_real!("APXoM52ua06rqGKGee4cJw", "lpb", "8e38b1cc2c9959db5a4147c313cedc8e19bc710c1ff9e01c04af48fe5a813fb5"),
+        aec_real!("APXoM52ua06rqGKGee4cJw", "mic", "9d30694a0ff9dff0583153e81350e98bf2ce50a85fbe705760977f2439348285"),
+    ),
+];
+
 fn manifest_dir() -> &'static Path {
     Path::new(env!("CARGO_MANIFEST_DIR"))
 }

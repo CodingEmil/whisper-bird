@@ -84,7 +84,7 @@ fn record_tracks(mic: &[f32], sys: &[f32], language: Option<&str>) -> Recorded {
         progress.set(p);
     };
     let diarized = if separate {
-        diarize_tracks(asr, Some(&diarize_model), &track_f32(&mic_track), &track_f32(&sys_track), &opts, true, &check)
+        diarize_tracks(asr, Some(&diarize_model), &mut track_f32(&mic_track), &track_f32(&sys_track), &opts, true, &check)
     } else {
         diarize_and_retranscribe(asr, &diarize_model, &full, &opts, true, &check)
     };
@@ -326,4 +326,68 @@ fn getrennte_spuren_ich_und_gegenseite() {
     // Das Echo der Gegenseite darf nicht als „Ich“ im Transkript landen.
     assert!(me_wer <= 0.15, "„Ich“ weicht ab (WER {me_wer:.2}): {}", said("Ich"));
     assert!(other_wer <= 0.15, "Gegenseite weicht ab (WER {other_wer:.2})");
+}
+
+#[test]
+#[ignore = "braucht Modelle und Testaudio – scripts/test.ps1"]
+fn echtes_geraete_echo_landet_nicht_bei_ich() {
+    // Meine Beiträge: zwei Stücke Bierkrieg, an Sprechpausen geschnitten.
+    let bierkrieg = load_audio(&fixture(&DE_BIERKRIEG));
+    let (own_pcm, own_turns) = dialog(&[(&bierkrieg, "ich")], &[20.0, 20.0]);
+    let opts = AsrOptions { language: None, vocabulary: &[], cancel: None };
+    let rms = |x: &[f32]| (x.iter().map(|v| v * v).sum::<f32>() / x.len().max(1) as f32).sqrt();
+    let gap = SR * 2 / 5;
+    let mut me_wers = Vec::new();
+    for (i, (lpb, echo)) in AEC_REAL.iter().enumerate() {
+        let (lpb, echo) = (load_audio(&fixture(lpb)), load_audio(&fixture(echo)));
+        // Ich, Gegenseite (mit echtem Echo im Mikrofon), Ich. Meine Stimme so laut wie das Echo.
+        let gain = rms(&echo) / rms(&own_pcm);
+        let (mut mic, mut sys, mut clean, mut reference) = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+        let parts: [(&[f32], &[f32], &[f32], &str); 3] = [
+            (&own_pcm[range_ms(&own_turns[0])], &[], &[], "ich"),
+            (&[], &lpb, &echo, "gegenseite"),
+            (&own_pcm[range_ms(&own_turns[1])], &[], &[], "ich"),
+        ];
+        for (own, far, far_echo, who) in parts {
+            if !mic.is_empty() {
+                for v in [&mut mic, &mut sys, &mut clean] {
+                    v.extend(std::iter::repeat(0.0).take(gap));
+                }
+            }
+            let start = mic.len();
+            let n = own.len().max(far.len()).max(far_echo.len());
+            let at = |x: &[f32], k: usize| x.get(k).copied().unwrap_or(0.0);
+            for k in 0..n {
+                mic.push(at(own, k) * gain + at(far_echo, k));
+                sys.push(at(far, k));
+                clean.push(at(own, k) * gain + at(far, k));
+            }
+            reference.push(((start / 16) as i64, (mic.len() / 16) as i64, who.to_string()));
+        }
+        let expected: Vec<(String, String)> = reference
+            .iter()
+            .map(|t| {
+                let parts = asr().transcribe_long(&clean[range_ms(t)], &opts, &mut |_| {}).unwrap();
+                (t.2.clone(), parts.iter().map(|p| p.text.as_str()).collect::<Vec<_>>().join(" "))
+            })
+            .collect();
+        let want = |name: &str| expected.iter().filter(|e| e.0 == name).map(|e| e.1.as_str()).collect::<Vec<_>>().join(" ");
+
+        let r = record_tracks(&mic, &sys, None);
+        let m = &r.meeting;
+        println!("--- Gerät {i}\n{}", transcript_text(m));
+        let said_me = text_of(m.segments.iter().filter(|s| m.speakers[s.speaker as usize] == "Ich"));
+        let me_wer = wer(&want("ich"), &said_me);
+        assert_eq!(m.speakers.first().map(String::as_str), Some("Ich"), "Gerät {i}: {:?}", m.speakers);
+        // Das Echo der Gegenseite darf nicht als „Ich“ im Transkript landen.
+        assert!(me_wer <= 0.15, "Gerät {i}: „Ich“ weicht ab (WER {me_wer:.2}): {said_me}");
+        me_wers.push(me_wer);
+    }
+    report(
+        "meeting_echtes_echo",
+        &[
+            ("ich_wer_mittel", me_wers.iter().sum::<f64>() / me_wers.len() as f64),
+            ("ich_wer_max", me_wers.iter().cloned().fold(0.0, f64::max)),
+        ],
+    );
 }

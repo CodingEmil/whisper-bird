@@ -123,6 +123,7 @@ Compiled into Whisper Bird. Crates under MPL-2.0 are used unmodified; their
 source code is available at the crates.io address given next to them.
 
 adler2 2.0.1  0BSD OR MIT OR Apache-2.0  [L131]
+aec3 0.4.0  MIT OR BSD-3-Clause  [L126]
 aho-corasick 1.1.5  Unlicense OR MIT  [L137]
 alloc-no-stdlib 3.0.0  BSD-3-Clause  [L10]
 alloc-stdlib 0.3.0  BSD-3-Clause  [L11]
@@ -4791,7 +4792,7 @@ SOFTWARE.
 
 [L126] MIT License
 ------------------------------------------------------------------------------
-Used by: brotli-decompressor 6.2.0, chrono 0.4.45, dasp_sample 0.11.0, dpi 0.1.2, tauri-plugin-autostart 2.7.0, tauri-plugin-dialog 2.8.3, tauri-plugin-fs 2.7.1, tauri-plugin-log 2.10.1, tauri-plugin-opener 2.7.2, tauri-plugin-single-instance 2.5.4, webview2-com-macros 0.8.1, webview2-com-sys 0.39.1, webview2-com 0.39.1, windows-collections 0.3.2, windows-core 0.58.0, windows-core 0.62.2, windows-future 0.3.2, windows-implement 0.58.0, windows-implement 0.60.2, windows-interface 0.58.0, windows-interface 0.59.3, windows-link 0.2.1, windows-numerics 0.3.1, windows-registry 0.6.1, windows-result 0.2.0, windows-result 0.4.1, windows-strings 0.1.0, windows-strings 0.5.1, windows-sys 0.60.2, windows-sys 0.61.2, windows-targets 0.52.6, windows-targets 0.53.5, windows-threading 0.2.1, windows-version 0.1.7, windows 0.58.0, windows 0.62.2, windows_x86_64_msvc 0.52.6, windows_x86_64_msvc 0.53.1
+Used by: aec3 0.4.0, brotli-decompressor 6.2.0, chrono 0.4.45, dasp_sample 0.11.0, dpi 0.1.2, tauri-plugin-autostart 2.7.0, tauri-plugin-dialog 2.8.3, tauri-plugin-fs 2.7.1, tauri-plugin-log 2.10.1, tauri-plugin-opener 2.7.2, tauri-plugin-single-instance 2.5.4, webview2-com-macros 0.8.1, webview2-com-sys 0.39.1, webview2-com 0.39.1, windows-collections 0.3.2, windows-core 0.58.0, windows-core 0.62.2, windows-future 0.3.2, windows-implement 0.58.0, windows-implement 0.60.2, windows-interface 0.58.0, windows-interface 0.59.3, windows-link 0.2.1, windows-numerics 0.3.1, windows-registry 0.6.1, windows-result 0.2.0, windows-result 0.4.1, windows-strings 0.1.0, windows-strings 0.5.1, windows-sys 0.60.2, windows-sys 0.61.2, windows-targets 0.52.6, windows-targets 0.53.5, windows-threading 0.2.1, windows-version 0.1.7, windows 0.58.0, windows 0.62.2, windows_x86_64_msvc 0.52.6, windows_x86_64_msvc 0.53.1
 
 MIT License
 
