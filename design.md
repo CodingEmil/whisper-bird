@@ -38,7 +38,7 @@ The spacing scale, the type scale (ratio 1.2), the easings and the durations are
 - A shortcut is always drawn as keycaps, in the recorder as in running text.
 
 ## Motion
-- Character: calm. State only (`--dur-micro`, `--dur-short`), `transform` and `opacity`; no reveal; under reduced motion everything ends at once. The bird pecks while working and sings along to the voice (only the beak moves). At rest (the bubble, the bird on Home) it preens every 6–14 s for 1.6 s; the sidebar bird stays still.
+- Character: calm. State only (`--dur-micro`, `--dur-short`), `transform` and `opacity`; no reveal; under reduced motion everything ends at once. The bird moves like a real one: head, body, tail and eye are separate parts, the feet stay put, the head snaps between held poses. It pecks while working (leans in, two quick pecks, tail up as counterweight) and sings along to the voice (beak opens, head lifts a little). At rest (the bubble, the bird on Home) every 5–12 s it looks around, bobs like a kingfisher or preens; the sidebar bird stays still. While a meeting records, the bubble wears a breathing apricot ring that glows with the audio level.
 
 ## Exports
 `src/tokens.css` in this project. Tailwind, DTCG or shadcn blocks are added here on request, per `export-formats.md`.
