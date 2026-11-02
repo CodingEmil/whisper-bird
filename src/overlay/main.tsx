@@ -29,11 +29,13 @@ function Waveform({ levels }: { levels: number[] }) {
   );
 }
 
-function IdleIcon({ drop }: { drop: boolean }) {
+/** `meeting`: Pegel des laufenden Meetings (0–1), sonst null. */
+function IdleIcon({ drop, meeting }: { drop: boolean; meeting: number | null }) {
   const down = useRef<{ x: number; y: number } | null>(null);
   return (
     <div
-      className={`bubble ${drop ? "drop" : ""}`}
+      className={`bubble ${drop ? "drop" : ""} ${meeting !== null ? "meeting" : ""}`}
+      style={{ ["--level" as string]: meeting ?? 0 }}
       onMouseDown={(e) => {
         if (e.button === 0) down.current = { x: e.screenX, y: e.screenY };
       }}
@@ -55,7 +57,7 @@ function IdleIcon({ drop }: { drop: boolean }) {
         api.overlayContextMenu();
       }}
     >
-      {drop ? <Plus size={22} /> : <Bird size={34} preen />}
+      {drop ? <Plus size={22} /> : <Bird size={34} idle />}
     </div>
   );
 }
@@ -65,6 +67,7 @@ function Overlay() {
   const [state, setState] = useState<OverlayState>({ phase: "idle", message: null, enhance: false, progress: null, floating: true });
   const [levels, setLevels] = useState<number[]>(() => Array(BARS).fill(0));
   const [drop, setDrop] = useState(false);
+  const [meeting, setMeeting] = useState<{ id: string; level: number } | null>(null);
   const [started, setStarted] = useState(Date.now());
   const [now, setNow] = useState(Date.now());
   const t = (k: Parameters<typeof translate>[1]) => translate(lang, k);
@@ -84,6 +87,11 @@ function Overlay() {
       }),
       on<number>("audio-level", (l) => setLevels((prev) => [...prev.slice(1), l])),
       on<boolean>("overlay-drop", setDrop),
+      // Pegel kommen nur, solange ein Meeting aufnimmt; danach meldet es einen anderen Status.
+      on<{ id: string; mic: number; system: number }>("meeting-level", (l) => setMeeting({ id: l.id, level: Math.max(l.mic, l.system) })),
+      on<{ id: string; status: string }>("meeting-update", (m) => {
+        if (m.status !== "recording") setMeeting((cur) => (cur?.id === m.id ? null : cur));
+      }),
     ];
     return () => offs.forEach((o) => o());
   }, []);
@@ -98,7 +106,7 @@ function Overlay() {
   const timer = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;
 
   if (state.phase === "idle") {
-    return state.floating ? <IdleIcon drop={drop} /> : null;
+    return state.floating ? <IdleIcon drop={drop} meeting={meeting?.level ?? null} /> : null;
   }
 
   return (

@@ -89,6 +89,37 @@ svg {
   border-color: var(--color-accent);
   background: var(--color-accent-wash);
 }
+/* Meeting läuft: ein Ring im Siegel der Aufnahme atmet langsam, und wenn
+ * jemand spricht, leuchtet er mit dem Pegel auf (--level, 0–1). */
+.bubble.meeting {
+  position: relative;
+}
+.bubble.meeting::before,
+.bubble.meeting::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border: 2px solid var(--color-accent-2);
+  border-radius: var(--radius-pill);
+  pointer-events: none;
+}
+.bubble.meeting::before {
+  animation: breathe 3.2s var(--ease-in-out) infinite;
+}
+.bubble.meeting::after {
+  box-shadow: 0 0 5px var(--color-accent-2);
+  opacity: var(--level);
+  transition: opacity var(--dur-micro) linear;
+}
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
 
 /* Aktiv: die Pille */
 .pill {
@@ -122,28 +153,6 @@ svg {
 
 .pill .bird {
   flex-shrink: 0;
-}
-.bird .mandible {
-  transition: transform var(--dur-micro) linear;
-}
-/* Picken als Ladeanzeige: Kopf zweimal nach vorn, dann Pause. Drehpunkt an den Füßen. */
-.bird.peck {
-  transform-origin: 43% 88%;
-  animation: peck 1.1s var(--ease-in-out) infinite;
-}
-@keyframes peck {
-  0%,
-  55%,
-  100% {
-    transform: none;
-  }
-  18%,
-  40% {
-    transform: rotate(16deg);
-  }
-  29% {
-    transform: rotate(8deg);
-  }
 }
 
 /* Pegel als Balken: feste Höhe, skaliert per transform. */
@@ -275,13 +284,16 @@ svg {
 
 @media (prefers-reduced-motion: reduce) {
   .pill,
-  .bird.peck,
-  .pulse {
+  .pulse,
+  .bubble.meeting::before {
     animation: none;
+  }
+  .bubble.meeting::before {
+    opacity: 0.45;
   }
   .wave span,
   .file-bar div,
-  .bird .mandible {
+  .bubble.meeting::after {
     transition: none;
   }
 }

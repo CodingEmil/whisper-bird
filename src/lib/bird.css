@@ -1,81 +1,325 @@
-/* Putzen, für den Vogel in der Bubble und auf der Übersicht: Kopf nach vorn,
- * ein paar Mal knabbern, dann die Federn schütteln. Drehpunkt an den Füßen. */
-.bird.preen {
-  transform-origin: 43% 88%;
-  animation: preen 1.6s var(--ease-in-out);
+/* Der Vogel bewegt sich wie ein echter: Der Kopf ruckt in schnellen Sprüngen
+ * und hält dann still, der Körper wippt über den Füßen, der Schwanz zuckt mit.
+ * Drehpunkte in SVG-Einheiten: Füße, Hals, Schwanzwurzel. */
+.bird .body {
+  transform-origin: 112px 224px;
+}
+/* Singen folgt dem Pegel: Schnabel und Kopf gleiten zum nächsten Wert. */
+.bird .head,
+.bird .mandible {
+  transition: transform var(--dur-micro) linear;
+}
+.bird .head {
+  transform-origin: 128px 86px;
+}
+.bird .tail {
+  transform-origin: 80px 182px;
+}
+.bird .eye {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* Umschauen: Kopf hoch, als lausche er, dann hinunter, dazwischen ein Lidschlag. */
+.bird.look .head {
+  animation: look 1.8s var(--ease-out);
+}
+.bird.look .eye {
+  animation: blink 1.8s linear;
+}
+@keyframes look {
+  0%,
+  86%,
+  100% {
+    transform: none;
+  }
+  6%,
+  34% {
+    transform: rotate(-11deg);
+  }
+  40%,
+  70% {
+    transform: rotate(7deg) translate(2px, 1px);
+  }
+  78% {
+    transform: rotate(-2deg);
+  }
+}
+@keyframes blink {
+  0%,
+  45%,
+  53%,
+  100% {
+    transform: none;
+  }
+  49% {
+    transform: scaleY(0.1);
+  }
+}
+
+/* Wippen wie ein Eisvogel auf dem Ast: zweimal in die Knie, der Kopf bleibt
+ * waagrecht, der Schwanz schnellt hoch. */
+.bird.bob .body {
+  animation: bob 1.3s var(--ease-in-out);
+}
+.bird.bob .head {
+  animation: bob-head 1.3s var(--ease-in-out);
+}
+.bird.bob .tail {
+  animation: bob-tail 1.3s var(--ease-out);
+}
+@keyframes bob {
+  0%,
+  22%,
+  44%,
+  100% {
+    transform: none;
+  }
+  11%,
+  33% {
+    transform: translateY(7px) rotate(3deg);
+  }
+}
+@keyframes bob-head {
+  0%,
+  22%,
+  44%,
+  100% {
+    transform: none;
+  }
+  11%,
+  33% {
+    transform: rotate(-3deg);
+  }
+}
+@keyframes bob-tail {
+  0%,
+  8%,
+  30%,
+  56%,
+  100% {
+    transform: none;
+  }
+  14%,
+  36% {
+    transform: rotate(16deg);
+  }
+}
+
+/* Putzen: Kopf in die Brustfedern, ein paar Mal knabbern, dann Kopf
+ * schütteln und das Gefieder richten. */
+.bird.preen .body {
+  animation: preen-body 2.6s var(--ease-in-out);
+}
+.bird.preen .head {
+  animation: preen-head 2.6s var(--ease-in-out);
+}
+.bird.preen .tail {
+  animation: preen-tail 2.6s var(--ease-in-out);
 }
 .bird.preen .mandible.upper {
-  animation: nibble-upper 1.6s linear;
+  animation: nibble-upper 2.6s linear;
 }
 .bird.preen .mandible.lower {
-  animation: nibble-lower 1.6s linear;
+  animation: nibble-lower 2.6s linear;
 }
-@keyframes preen {
+.bird.preen .eye {
+  animation: preen-blink 2.6s linear;
+}
+@keyframes preen-body {
   0%,
-  56%,
-  90%,
+  62%,
   100% {
     transform: none;
   }
   12%,
-  28% {
-    transform: rotate(14deg);
+  52% {
+    transform: rotate(3deg);
   }
-  20%,
-  36% {
-    transform: rotate(10deg);
-  }
-  44% {
-    transform: rotate(13deg);
-  }
-  64% {
-    transform: scale(1.07, 0.94);
+  68% {
+    transform: rotate(-1.5deg);
   }
   72% {
-    transform: scale(0.96, 1.04);
+    transform: rotate(1.5deg);
+  }
+  76% {
+    transform: rotate(-1deg);
   }
   80% {
-    transform: scale(1.03, 0.98);
+    transform: none;
+  }
+}
+@keyframes preen-head {
+  0%,
+  100% {
+    transform: none;
+  }
+  12% {
+    transform: translate(-8px, 8px) rotate(48deg);
+  }
+  20% {
+    transform: translate(-7px, 6px) rotate(43deg);
+  }
+  27% {
+    transform: translate(-8px, 9px) rotate(50deg);
+  }
+  34% {
+    transform: translate(-7px, 7px) rotate(44deg);
+  }
+  41% {
+    transform: translate(-8px, 9px) rotate(51deg);
+  }
+  50% {
+    transform: translate(-8px, 8px) rotate(48deg);
+  }
+  58% {
+    transform: none;
+  }
+  65% {
+    transform: rotate(-7deg);
+  }
+  69% {
+    transform: rotate(6deg);
+  }
+  73% {
+    transform: rotate(-5deg);
+  }
+  77% {
+    transform: rotate(3deg);
+  }
+  81% {
+    transform: none;
+  }
+}
+@keyframes preen-tail {
+  0%,
+  62%,
+  84%,
+  100% {
+    transform: none;
+  }
+  12%,
+  52% {
+    transform: rotate(5deg);
+  }
+  68% {
+    transform: rotate(10deg);
+  }
+  72% {
+    transform: rotate(-4deg);
+  }
+  76% {
+    transform: rotate(6deg);
+  }
+  80% {
+    transform: rotate(-2deg);
   }
 }
 @keyframes nibble-upper {
   0%,
-  12%,
-  22%,
-  32%,
-  42%,
-  52%,
+  16%,
+  23%,
+  30%,
+  37%,
+  44%,
+  51%,
   100% {
     transform: none;
   }
-  17%,
-  27%,
-  37%,
+  19%,
+  26%,
+  33%,
+  40%,
   47% {
     transform: rotate(-12deg);
   }
 }
 @keyframes nibble-lower {
   0%,
-  12%,
-  22%,
-  32%,
-  42%,
-  52%,
+  16%,
+  23%,
+  30%,
+  37%,
+  44%,
+  51%,
   100% {
     transform: none;
   }
-  17%,
-  27%,
-  37%,
+  19%,
+  26%,
+  33%,
+  40%,
   47% {
     transform: rotate(12deg);
   }
 }
+@keyframes preen-blink {
+  0%,
+  86%,
+  92%,
+  100% {
+    transform: none;
+  }
+  89% {
+    transform: scaleY(0.1);
+  }
+}
+
+/* Picken als Ladeanzeige: vorbeugen, zweimal kurz zustoßen, aufrichten, Pause.
+ * Der Schwanz geht als Gegengewicht hoch. */
+.bird.peck .body {
+  animation: peck-body 1.1s var(--ease-in-out) infinite;
+}
+.bird.peck .head {
+  animation: peck-head 1.1s var(--ease-in-out) infinite;
+}
+.bird.peck .tail {
+  animation: peck-tail 1.1s var(--ease-in-out) infinite;
+}
+@keyframes peck-body {
+  0%,
+  62%,
+  100% {
+    transform: none;
+  }
+  12%,
+  48% {
+    transform: rotate(5deg);
+  }
+}
+@keyframes peck-head {
+  0%,
+  58%,
+  100% {
+    transform: none;
+  }
+  10% {
+    transform: rotate(6deg);
+  }
+  18%,
+  34% {
+    transform: rotate(30deg) translate(4px, 5px);
+  }
+  26%,
+  44% {
+    transform: rotate(8deg);
+  }
+}
+@keyframes peck-tail {
+  0%,
+  62%,
+  100% {
+    transform: none;
+  }
+  12%,
+  48% {
+    transform: rotate(10deg);
+  }
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .bird.preen,
-  .bird.preen .mandible {
-    animation: none;
+  .bird * {
+    animation: none !important;
+    transition: none !important;
   }
 }
