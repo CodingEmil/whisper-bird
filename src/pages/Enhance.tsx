@@ -12,6 +12,9 @@ const CLI_PRESETS: Record<string, string> = {
   copilot: "copilot -s --no-ask-user",
 };
 
+/** Modell-Option je CLI, nach dem Programmnamen im Befehl – gilt auch, wenn der Befehl angepasst wurde. */
+const MODEL_FLAG: Record<string, string> = { claude: "--model", codex: "-m", gemini: "-m", pi: "--model", copilot: "--model" };
+
 export default function Enhance() {
   const { t, settings: s, update } = useApp();
   const { models, progress, refresh } = useModels();
@@ -21,6 +24,9 @@ export default function Enhance() {
   const [prompt, setPrompt] = useState(s.enhance_system_prompt);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const modelFlag = MODEL_FLAG[s.enhance_cli_command.trim().split(/\s+/)[0].toLowerCase()];
+  const commandHint = modelFlag ? `${t("enh.command_hint")} ${t("enh.model_hint", { flag: modelFlag })}` : t("enh.command_hint");
 
   const refreshLlama = () => api.llamaStatus().then(setLlama);
   useEffect(() => {
@@ -182,7 +188,7 @@ export default function Enhance() {
               }
             />
           </Row>
-          <Row label={t("enh.command")} hint={t("enh.command_hint")} stack>
+          <Row label={t("enh.command")} hint={commandHint} stack>
             <input
               className="input wide mono"
               type="text"

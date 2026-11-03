@@ -1,6 +1,6 @@
 [package]
 name = "whisper-island"
-version = "0.1.1"
+version = "0.1.2"
 description = "Whisper Bird – lokales Diktieren, Verbessern und Transkribieren für Windows"
 authors = ["Emil"]
 edition = "2021"

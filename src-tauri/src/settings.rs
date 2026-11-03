@@ -286,7 +286,7 @@ impl Default for Settings {
             history_limit: 1000,
 
             meeting_source: MeetingSource::Both,
-            meeting_auto_notes: true,
+            meeting_auto_notes: false,
             file_output_dir: None,
 
             autostart: false,
