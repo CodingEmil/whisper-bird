@@ -89,22 +89,12 @@ Updates sucht, lädt und installiert die App selbst.
 
 ### macOS (Vorschau)
 
-Die Mac-Version für Apple Silicon entsteht bisher nur per Hand
-(Actions → Build → *Run workflow*, das `.dmg` hängt am Lauf) oder lokal, siehe
-[Entwickeln](#entwickeln). Sie ist ad hoc signiert, nicht notarisiert:
+Für Macs mit Apple-Chip ab macOS 12. Die App ist noch nicht notarisiert, beim ersten Start
+blockiert macOS sie deshalb einmal. **Schritt für Schritt: [Installation auf dem Mac](docs/macos.md).**
 
-1. Beim ersten Öffnen blockiert macOS die App. Unter *Systemeinstellungen → Datenschutz &
-   Sicherheit* auf **Trotzdem öffnen** klicken.
-2. Die Einrichtung fragt nach **Bedienungshilfen** (Shortcuts, Einfügen, markierter Text) und
-   dem **Mikrofon**. Meetings mit System-Audio fragen beim ersten Mal nach *Nur Systemaudio
-   aufnehmen* (ab macOS 14.6).
-3. Nach jedem Update kann macOS die Bedienungshilfen-Freigabe zurücksetzen, weil sich die
-   Ad-hoc-Signatur ändert. Die App zeigt das oben als Hinweis an. Abhilfe schafft erst ein
-   Apple-Developer-Zertifikat mit Notarisierung.
-
-Noch offen auf dem Mac: Selbst-Update (die App verlinkt die Release-Seite), Intel-Macs nur auf
-der CPU, Shortcuts setzen aus, solange eine App „Sichere Eingabe“ aktiv hat (Passwortfelder,
-Terminal).
+Das `.dmg` entsteht bisher nur per Hand (Actions → Build → *Run workflow*, es hängt am Lauf)
+oder lokal, siehe [Entwickeln](#entwickeln). Noch offen auf dem Mac: Notarisierung (braucht ein
+Apple-Developer-Konto), Selbst-Update, Intel-Macs nur auf der CPU.
 
 <br>
 
