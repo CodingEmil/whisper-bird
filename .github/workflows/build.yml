@@ -1,8 +1,8 @@
-# Baut die Windows-Exe (Installer + portable Zip) und, nur manuell, die Mac-App (.dmg).
+# Baut die Windows-Exe (Installer + portable Zip) und die Mac-App (.dmg, Apple Silicon).
 # - Manuell: Actions → Build → "Run workflow" (oder `gh workflow run build.yml`)
-#   → Ergebnis als Artifact am Workflow-Lauf.
-# - Tag `vX.Y.Z` pushen → zusätzlich GitHub Release mit den Windows-Dateien.
-#   `vX.Y.Z-beta.N` wird als Vorabversion veröffentlicht.
+#   → Ergebnis als Artifacts am Workflow-Lauf.
+# - Tag `vX.Y.Z` pushen → zusätzlich GitHub Release mit allen Dateien, sobald beide
+#   Builds grün sind. `vX.Y.Z-beta.N` wird als Vorabversion veröffentlicht.
 name: Build
 
 on:
@@ -144,41 +144,9 @@ jobs:
           name: whisper-bird-${{ steps.cfg.outputs.version }}
           path: out/*
 
-      - name: GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          prerelease=()
-          [[ "$GITHUB_REF_NAME" == *-* ]] && prerelease=(--prerelease)
-          # Die Stichpunkte über der Linie zeigt die App nach dem Update als Neuerungen an
-          # (updates::release_notes); auf GitHub lassen sie sich nachträglich bearbeiten.
-          prev=$(git describe --tags --abbrev=0 "$GITHUB_REF_NAME^" 2>/dev/null || true)
-          {
-            echo "## Neu"
-            echo
-            git log --no-merges --max-count=30 --pretty='- %s' "${prev:+$prev..}$GITHUB_REF_NAME"
-            echo
-            echo "---"
-            echo
-            echo "Installer (\`*-setup.exe\`) oder portable Zip. Nicht signiert: Windows SmartScreen zeigt beim ersten Start „Unbekannter Herausgeber“ → Weitere Informationen → Trotzdem ausführen."
-            if [[ -n "$prev" ]]; then
-              echo
-              echo "**Alle Änderungen**: https://github.com/$GITHUB_REPOSITORY/compare/$prev...$GITHUB_REF_NAME"
-            fi
-          } > release-notes.md
-          cat release-notes.md
-          gh release create "$GITHUB_REF_NAME" out/* "${prerelease[@]}" \
-            --title "Whisper Bird ${{ steps.cfg.outputs.version }}" \
-            --notes-file release-notes.md
-
-  # Vorschau der Mac-Version (Apple Silicon): nur bei manuellem Start. Das .dmg hängt
-  # als Artifact am Lauf; in Releases kommt es erst, wenn die Mac-Version getestet ist.
-  # Nicht signiert (ad hoc): beim ersten Start Systemeinstellungen → Datenschutz &
-  # Sicherheit → „Trotzdem öffnen“.
+  # Mac-App für Apple Silicon. Nicht notarisiert (ad hoc signiert): Beim ersten Start
+  # muss man sie einmal freigeben, siehe docs/macos.md.
   macos:
-    if: github.event_name == 'workflow_dispatch'
     runs-on: macos-latest
     timeout-minutes: 90
 
@@ -194,9 +162,17 @@ jobs:
           workspaces: "./src-tauri -> target"
           cache-bin: false
 
+      # Wie unter Windows: Bei einem Tag gilt dessen Versionsnummer.
       - name: Version
         id: cfg
-        run: echo "version=$(jq -r .version src-tauri/tauri.conf.json)" >> "$GITHUB_OUTPUT"
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            version="${GITHUB_REF_NAME#v}"
+          else
+            version=$(jq -r .version src-tauri/tauri.conf.json)
+          fi
+          jq -n --arg v "$version" '{version: $v}' > src-tauri/ci.conf.json
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Frontend-Abhängigkeiten
         run: bun install --frozen-lockfile
@@ -210,7 +186,7 @@ jobs:
         run: cargo test --release --lib
 
       - name: Build
-        run: bun run tauri build --bundles app,dmg
+        run: bun run tauri build --bundles app,dmg --config src-tauri/ci.conf.json
 
       - name: Dateien zusammenstellen
         run: |
@@ -222,3 +198,48 @@ jobs:
         with:
           name: whisper-bird-${{ steps.cfg.outputs.version }}-macos
           path: out/*
+
+  # Erst wenn Windows und Mac gebaut sind: ein Release mit allen Dateien.
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [windows, macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v5
+        with:
+          path: out
+          merge-multiple: true
+
+      - name: GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls -la out
+          prerelease=()
+          [[ "$GITHUB_REF_NAME" == *-* ]] && prerelease=(--prerelease)
+          # Die Stichpunkte über der Linie zeigt die App nach dem Update als Neuerungen an
+          # (updates::release_notes); auf GitHub lassen sie sich nachträglich bearbeiten.
+          prev=$(git describe --tags --abbrev=0 "$GITHUB_REF_NAME^" 2>/dev/null || true)
+          {
+            echo "## Neu"
+            echo
+            git log --no-merges --max-count=30 --pretty='- %s' "${prev:+$prev..}$GITHUB_REF_NAME"
+            echo
+            echo "---"
+            echo
+            echo "**Windows:** Installer (\`*-setup.exe\`) oder portable Zip. Nicht signiert: Windows SmartScreen zeigt beim ersten Start „Unbekannter Herausgeber“ → Weitere Informationen → Trotzdem ausführen."
+            echo
+            echo "**macOS** (Apple Silicon, ab macOS 12): \`*_aarch64.dmg\`. Nicht notarisiert: Beim ersten Start einmal unter Systemeinstellungen → Datenschutz & Sicherheit → Trotzdem öffnen freigeben. Schritt für Schritt: [Installation auf dem Mac](https://github.com/$GITHUB_REPOSITORY/blob/$GITHUB_REF_NAME/docs/macos.md)."
+            if [[ -n "$prev" ]]; then
+              echo
+              echo "**Alle Änderungen**: https://github.com/$GITHUB_REPOSITORY/compare/$prev...$GITHUB_REF_NAME"
+            fi
+          } > release-notes.md
+          cat release-notes.md
+          gh release create "$GITHUB_REF_NAME" out/* "${prerelease[@]}" \
+            --title "Whisper Bird ${GITHUB_REF_NAME#v}" \
+            --notes-file release-notes.md

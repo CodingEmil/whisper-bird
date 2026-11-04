@@ -6,7 +6,8 @@ mehr nötig als bei anderen Apps. Das dauert etwa zwei Minuten und ist nur einma
 
 ## 1. Herunterladen und installieren
 
-1. Die Datei `Whisper Bird_…_aarch64.dmg` herunterladen.
+1. Unter [**Releases**](https://github.com/CodingEmil/whisper-bird/releases/latest) die Datei
+   `Whisper.Bird_…_aarch64.dmg` herunterladen.
 2. Die `.dmg` per Doppelklick öffnen und **Whisper Bird** in den Ordner **Programme** ziehen.
 3. Das Fenster der `.dmg` schließen. Im Finder lässt sie sich links neben dem Laufwerksnamen
    auswerfen.

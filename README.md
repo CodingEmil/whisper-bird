@@ -78,7 +78,7 @@ Enhance läuft über einen dieser Anbieter:
 ## Installieren
 
 Unter [**Releases**](https://github.com/CodingEmil/whisper-bird/releases/latest) gibt es
-einen Installer (NSIS) und eine portable Zip.
+für Windows einen Installer (NSIS) und eine portable Zip, für den Mac ein `.dmg`.
 
 > [!NOTE]
 > Die Builds sind nicht signiert, beim ersten Start erscheint deshalb ein SmartScreen-Hinweis.
@@ -92,9 +92,8 @@ Updates sucht, lädt und installiert die App selbst.
 Für Macs mit Apple-Chip ab macOS 12. Die App ist noch nicht notarisiert, beim ersten Start
 blockiert macOS sie deshalb einmal. **Schritt für Schritt: [Installation auf dem Mac](docs/macos.md).**
 
-Das `.dmg` entsteht bisher nur per Hand (Actions → Build → *Run workflow*, es hängt am Lauf)
-oder lokal, siehe [Entwickeln](#entwickeln). Noch offen auf dem Mac: Notarisierung (braucht ein
-Apple-Developer-Konto), Selbst-Update, Intel-Macs nur auf der CPU.
+Noch offen auf dem Mac: Notarisierung (braucht ein Apple-Developer-Konto), Selbst-Update,
+Intel-Macs nur auf der CPU.
 
 <br>
 
@@ -200,13 +199,13 @@ Der Workflow [`.github/workflows/build.yml`](.github/workflows/build.yml) baut a
 laufen TypeScript-Prüfung, UI-Tests und Rust-Unit-Tests; schlägt einer fehl, gibt es weder
 Dateien noch Release. Die End-to-End-Tests mit Modellen laufen nur lokal.
 
-Bei manuellem Start baut ein zweiter Job auf `macos-latest` die Mac-App als `.dmg` (mit
-Rust-Unit-Tests vorab). Sie landet nur als Artifact am Lauf, noch nicht im Release.
+Parallel baut ein zweiter Job auf `macos-latest` die Mac-App als `.dmg` (mit Rust-Unit-Tests
+vorab). Das Release entsteht erst, wenn beide Builds grün sind.
 
 | Weg | So geht's |
 |---|---|
 | **Manuell** | `gh workflow run build.yml` (oder Actions → Build → *Run workflow*). Die Dateien hängen danach als Artifact am Lauf (`gh run download`). |
-| **Release** | `git tag v0.2.0 && git push origin v0.2.0` baut mit dieser Versionsnummer und legt ein GitHub Release mit beiden Dateien an. |
+| **Release** | `git tag v0.2.0 && git push origin v0.2.0` baut mit dieser Versionsnummer und legt ein GitHub Release mit allen Dateien an. |
 
 <br>
 
