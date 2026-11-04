@@ -17,7 +17,9 @@ pub fn accessibility_granted() -> bool {
     unsafe { AXIsProcessTrusted() }
 }
 
-/// Zeigt die Systemabfrage (nur beim ersten Mal) und öffnet die Einstellungen.
+/// Zeigt die Systemabfrage und trägt Whisper Bird damit in die Liste unter
+/// Bedienungshilfen ein. macOS zeigt sie nur einmal; danach öffnet die
+/// Oberfläche die Einstellungen direkt (`open_settings`).
 pub fn request_accessibility() {
     autoreleasepool(|_| {
         let key = NSString::from_str("AXTrustedCheckOptionPrompt");
@@ -26,9 +28,6 @@ pub fn request_accessibility() {
             NSDictionary::from_slices(&[&*key], &[value.as_ref() as &AnyObject]);
         unsafe { AXIsProcessTrustedWithOptions(objc2::rc::Retained::as_ptr(&options) as *const c_void) };
     });
-    if !accessibility_granted() {
-        open_settings("accessibility");
-    }
 }
 
 /// Fragt nach dem Mikrofon. Die Antwort kommt asynchron; das Frontend fragt den Status ab.

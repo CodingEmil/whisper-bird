@@ -123,6 +123,10 @@ impl Hotkeys {
                         log::warn!("Shortcut {}: {}", e.field, e.message);
                     }
                     let _ = tauri::Emitter::emit(&state().app, "permissions-changed", ());
+                    // Aus den Systemeinstellungen zurück in die Einrichtung, wo jetzt der Haken steht.
+                    if !state().settings().onboarding_done {
+                        crate::show_main_window(None);
+                    }
                     return;
                 }
                 Err(e) => log::warn!("Shortcuts trotz Freigabe nicht verfügbar: {e}"),

@@ -374,7 +374,7 @@ const de = {
   "perm.title": "Zwei Freigaben für macOS",
   "perm.text": "Damit Whisper Bird deine Shortcuts erkennt und Text in andere Apps einfügen kann, braucht es Zugriff auf die Bedienungshilfen. Nach dem Mikrofon fragt macOS beim ersten Diktat; du kannst es auch gleich hier freigeben.",
   "perm.accessibility": "Bedienungshilfen",
-  "perm.accessibility_hint": "Für Shortcuts, Einfügen und markierten Text. In den Systemeinstellungen Whisper Bird einschalten.",
+  "perm.accessibility_hint": "Für Shortcuts, Einfügen und markierten Text.",
   "perm.microphone": "Mikrofon",
   "perm.microphone_hint": "Für Diktat und Meetings.",
   "perm.grant": "Freigeben",
@@ -382,6 +382,11 @@ const de = {
   "perm.granted": "Freigegeben",
   "perm.denied": "Abgelehnt",
   "perm.continue": "Weiter",
+  "perm.guide_title": "So geht's in den Systemeinstellungen",
+  "perm.guide_open": "Auf „Systemeinstellungen öffnen“ klicken – oder hier auf „Einstellungen öffnen“.",
+  "perm.guide_switch": "Den Schalter neben Whisper Bird einschalten und mit Passwort oder Touch ID bestätigen.",
+  "perm.guide_back": "Fertig. Whisper Bird kommt von selbst wieder nach vorn.",
+  "perm.guide_missing": "Whisper Bird fehlt in der Liste? Unten auf + klicken und Whisper Bird unter Programme auswählen.",
   "perm.missing": "Kein Zugriff auf die Bedienungshilfen: Shortcuts und Einfügen funktionieren erst nach der Freigabe. Nach einem Update fragt macOS unter Umständen erneut.",
 };
 
@@ -759,7 +764,7 @@ const en: Record<Key, string> = {
   "perm.title": "Two permissions for macOS",
   "perm.text": "Whisper Bird needs Accessibility access to recognize your shortcuts and insert text into other apps. macOS asks for the microphone on your first dictation; you can also allow it right here.",
   "perm.accessibility": "Accessibility",
-  "perm.accessibility_hint": "For shortcuts, inserting and selected text. Turn on Whisper Bird in System Settings.",
+  "perm.accessibility_hint": "For shortcuts, inserting and selected text.",
   "perm.microphone": "Microphone",
   "perm.microphone_hint": "For dictation and meetings.",
   "perm.grant": "Allow",
@@ -767,6 +772,11 @@ const en: Record<Key, string> = {
   "perm.granted": "Allowed",
   "perm.denied": "Denied",
   "perm.continue": "Continue",
+  "perm.guide_title": "Here's how in System Settings",
+  "perm.guide_open": "Click “Open System Settings” – or “Open Settings” here.",
+  "perm.guide_switch": "Turn on the switch next to Whisper Bird and confirm with your password or Touch ID.",
+  "perm.guide_back": "Done. Whisper Bird comes back to the front by itself.",
+  "perm.guide_missing": "Whisper Bird missing from the list? Click + below it and choose Whisper Bird in Applications.",
   "perm.missing": "No Accessibility access: shortcuts and inserting only work once it is allowed. After an update, macOS may ask again.",
 };
 

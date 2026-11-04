@@ -1805,3 +1805,28 @@ button.chip:hover {
     background: Highlight;
   }
 }
+
+/* Freigabe-Anleitung (macOS): Schritte und eine nachgebaute Zeile der Systemeinstellungen. */
+.perm-guide {
+  display: grid;
+  gap: var(--space-xs);
+  padding: var(--space-md);
+  border-top: var(--rule-hair) solid var(--color-rule);
+}
+.perm-guide .steps {
+  margin: 0;
+}
+.perm-mock {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  max-width: 320px;
+  margin-top: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+  border: var(--rule-hair) solid var(--color-edge);
+  border-radius: var(--radius-input);
+  background: var(--color-paper);
+}
+.perm-mock .toggle {
+  pointer-events: none;
+}

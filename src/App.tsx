@@ -222,8 +222,8 @@ export default function App() {
           <div className="notice warning" role="alert">
             <ShieldAlert size={18} />
             <div className="spacer">{t("perm.missing")}</div>
-            <button type="button" className="btn small primary" onClick={() => api.permissionRequest("accessibility")}>
-              {t("perm.grant")}
+            <button type="button" className="btn small primary" onClick={() => api.permissionOpenSettings("accessibility")}>
+              {t("perm.open_settings")}
             </button>
           </div>
         )}

@@ -58,9 +58,16 @@ test("Einrichtung beginnt mit den Freigaben und fragt nach Bedienungshilfen", as
   await expect.poll(() => page.evaluate(() => (window as any).calls.find((c: any) => c.command === "permission_request")))
     .toEqual({ command: "permission_request", kind: "accessibility" });
 
+  // Danach führt der Knopf direkt in die Einstellungen, darunter steht die Anleitung.
+  await expect(page.getByRole("heading", { name: "So geht's in den Systemeinstellungen" })).toBeVisible();
+  await page.getByRole("button", { name: "Einstellungen öffnen" }).click();
+  await expect.poll(() => page.evaluate(() => (window as any).calls.find((c: any) => c.command === "permission_open_settings")))
+    .toEqual({ command: "permission_open_settings", kind: "accessibility" });
+
   // Freigabe in den Systemeinstellungen: Die Abfrage alle 2 s bemerkt sie.
   await page.evaluate(() => { (window as any).perms.accessibility = true; });
   await expect(page.getByText("Freigegeben")).toBeVisible({ timeout: 5000 });
+  await expect(page.getByRole("heading", { name: "So geht's in den Systemeinstellungen" })).toBeHidden();
 
   await page.getByRole("button", { name: "Weiter" }).click();
   await expect(page.getByRole("heading", { name: "Modell wählen" })).toBeVisible();
