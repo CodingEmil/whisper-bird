@@ -1,0 +1,3 @@
+/* Deutsche Texte für die Systemabfragen (Mikrofon, System-Audio). */
+"NSMicrophoneUsageDescription" = "Whisper Bird nimmt deine Stimme auf, um sie in Text umzuwandeln. Die Spracherkennung läuft lokal auf deinem Mac.";
+"NSAudioCaptureUsageDescription" = "Whisper Bird nimmt den Ton deines Macs auf, um Meetings zu transkribieren. Nichts verlässt deinen Mac.";

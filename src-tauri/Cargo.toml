@@ -1,7 +1,7 @@
 [package]
 name = "whisper-island"
 version = "0.1.2"
-description = "Whisper Bird – lokales Diktieren, Verbessern und Transkribieren für Windows"
+description = "Whisper Bird – lokales Diktieren, Verbessern und Transkribieren für Windows und macOS"
 authors = ["Emil"]
 edition = "2021"
 default-run = "whisper-island"
@@ -15,7 +15,8 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["tray-icon", "image-png"] }
+# macos-private-api: transparente Fenster unter macOS (unter Windows ohne Wirkung).
+tauri = { version = "2", features = ["tray-icon", "image-png", "macos-private-api"] }
 tauri-plugin-single-instance = "2"
 tauri-plugin-autostart = "2"
 tauri-plugin-dialog = "2"
@@ -42,10 +43,21 @@ symphonia = { version = "0.5", features = ["all"] }
 # Audio-Aufnahme, Hotkeys und Transkription aus dem Handy-Ökosystem (MIT)
 handy-recorder = "0.1"
 handy-keys = "0.3.4"
-transcribe-cpp = { version = "0.4.1", default-features = false, features = ["vulkan"] }
 aec3 = "0.4"
 
+# Spracherkennung auf der GPU: Vulkan unter Windows (siehe unten), Metal auf
+# Apple Silicon. Intel-Macs laufen auf der CPU (wie bei Handy).
+[target.'cfg(all(target_os = "macos", target_arch = "aarch64"))'.dependencies.transcribe-cpp]
+version = "0.4.1"
+default-features = false
+features = ["metal"]
+
+[target.'cfg(not(any(windows, all(target_os = "macos", target_arch = "aarch64"))))'.dependencies.transcribe-cpp]
+version = "0.4.1"
+default-features = false
+
 [target.'cfg(windows)'.dependencies]
+transcribe-cpp = { version = "0.4.1", default-features = false, features = ["vulkan"] }
 windows = { version = "0.62", features = [
   "Win32_Foundation",
   "Win32_Globalization",
@@ -67,6 +79,20 @@ windows = { version = "0.62", features = [
   "Win32_UI_WindowsAndMessaging",
   "Win32_UI_Shell",
 ] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# Overlay und Kontextmenü als NSPanel: schweben über allen Apps, ohne sie zu deaktivieren.
+tauri-nspanel = "2.1"
+# System-Audio über einen Core-Audio-Process-Tap (ab macOS 14.6); dieselbe
+# cpal-Variante, die handy-recorder schon mitbringt.
+cpal = { package = "handy-cpal", version = "0.18" }
+objc2 = "0.6"
+objc2-foundation = "0.3"
+objc2-app-kit = "0.3"
+objc2-core-foundation = "0.3"
+objc2-core-graphics = "0.3"
+objc2-av-foundation = { version = "0.3", default-features = false, features = ["std", "block2", "AVCaptureDevice", "AVMediaFormat"] }
+block2 = "0.6"
 
 [profile.dev]
 incremental = true

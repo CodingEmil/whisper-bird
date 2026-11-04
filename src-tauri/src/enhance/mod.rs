@@ -6,8 +6,8 @@ pub mod cli;
 pub mod llama;
 
 use crate::catalog;
+use crate::platform::foreground::AppContext;
 use crate::settings::{EnhanceProvider, Settings};
-use crate::win::foreground::AppContext;
 use std::path::PathBuf;
 use std::time::Duration;
 

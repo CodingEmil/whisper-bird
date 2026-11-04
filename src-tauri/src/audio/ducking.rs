@@ -58,7 +58,12 @@ mod imp {
     }
 }
 
-#[cfg(not(windows))]
+#[cfg(target_os = "macos")]
+mod imp {
+    pub use crate::platform::macos::audio::{get_volume as get, set_volume as set};
+}
+
+#[cfg(not(any(windows, target_os = "macos")))]
 mod imp {
     pub fn get() -> anyhow::Result<f32> {
         anyhow::bail!("nicht unterstützt")

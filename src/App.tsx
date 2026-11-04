@@ -11,6 +11,7 @@ import {
   Mic,
   PenLine,
   RefreshCw,
+  ShieldAlert,
   SlidersHorizontal,
   Sparkles,
   Users,
@@ -35,6 +36,8 @@ import Advanced from "./pages/Advanced";
 import Help from "./pages/Help";
 import Onboarding from "./pages/Onboarding";
 import { Bird } from "./lib/bird";
+import { isMac } from "./lib/platform";
+import { usePermissions } from "./lib/permissions";
 
 export type PageId =
   | "home"
@@ -144,6 +147,7 @@ export default function App() {
   const [onboarding, setOnboarding] = useState(!settings.onboarding_done);
   const [meetingActive, setMeetingActive] = useState(false);
   const { status: update } = useUpdate();
+  const perms = usePermissions();
   useWindowShortcuts();
 
   useEffect(() => {
@@ -176,7 +180,7 @@ export default function App() {
           <Bird size={36} />
           <div>
             <div className="brand-name">{t("app.name")}</div>
-            <div className="brand-sub">lokal auf Windows</div>
+            <div className="brand-sub">{isMac ? "lokal auf dem Mac" : "lokal auf Windows"}</div>
           </div>
         </div>
         {NAV.map((g, i) => (
@@ -214,6 +218,15 @@ export default function App() {
         <VersionFoot status={update} onOpen={() => setPage("help")} />
       </nav>
       <main className="content">
+        {perms?.required && !perms.accessibility && (
+          <div className="notice warning" role="alert">
+            <ShieldAlert size={18} />
+            <div className="spacer">{t("perm.missing")}</div>
+            <button type="button" className="btn small primary" onClick={() => api.permissionRequest("accessibility")}>
+              {t("perm.grant")}
+            </button>
+          </div>
+        )}
         <div className="page" key={current.id}>
           <Comp navigate={setPage} />
         </div>

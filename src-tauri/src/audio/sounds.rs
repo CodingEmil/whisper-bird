@@ -126,7 +126,9 @@ pub fn play(sound: Sound, volume: f32) {
             SND_MEMORY | SND_ASYNC | SND_NODEFAULT,
         );
     }
-    #[cfg(not(windows))]
+    #[cfg(target_os = "macos")]
+    crate::platform::macos::audio::play_wav(data);
+    #[cfg(not(any(windows, target_os = "macos")))]
     let _ = data;
 }
 

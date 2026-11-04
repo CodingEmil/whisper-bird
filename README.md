@@ -5,8 +5,8 @@
 </p>
 
 <p align="center">
-  <b>Lokales Diktieren, Verbessern und Transkribieren für Windows – in jede App.</b><br>
-  <sub>Windows 10/11 · Rust & Tauri 2 · React/TypeScript · Spracherkennung und KI laufen auf deinem Rechner</sub>
+  <b>Lokales Diktieren, Verbessern und Transkribieren für Windows und macOS – in jede App.</b><br>
+  <sub>Windows 10/11 · macOS 12+ auf Apple Silicon (Vorschau) · Rust & Tauri 2 · React/TypeScript · Spracherkennung und KI laufen auf deinem Rechner</sub>
 </p>
 
 <p align="center">
@@ -22,9 +22,10 @@
 
 ## So funktioniert's
 
-Drück <kbd>Strg</kbd> + <kbd>Umschalt</kbd> + <kbd>Leertaste</kbd>, sprich los, und der
-Text erscheint dort, wo der Cursor gerade steht: in Outlook, Slack, VS Code oder jeder
-anderen App. <kbd>Esc</kbd> bricht ab.
+Drück <kbd>Strg</kbd> + <kbd>Umschalt</kbd> + <kbd>Leertaste</kbd> (auf dem Mac
+<kbd>⌃</kbd> + <kbd>⇧</kbd> + <kbd>Leertaste</kbd>), sprich los, und der Text erscheint dort,
+wo der Cursor gerade steht: in Outlook, Slack, VS Code oder jeder anderen App. <kbd>Esc</kbd>
+bricht ab.
 
 <p align="center">
   <img src="docs/readme/flow.svg" alt="Ablauf: Aufnehmen, Erkennen, Verbessern, Einfügen" width="100%">
@@ -47,21 +48,21 @@ anderen App. <kbd>Esc</kbd> bricht ab.
 
 | | |
 |---|---|
-| **Meetings** | Mikrofon und/oder PC-Audio (WASAPI-Loopback), Live-Transkript, danach Sprechererkennung (Sortformer), umbenennbare Sprecher, automatische Notizen, Export als PDF oder Text. Mit beiden Quellen bleiben die Spuren getrennt: Das Mikrofon ist „Ich“ (Lautsprecher-Echo wird mit WebRTC AEC3 abgezogen und Reste herausgefiltert), nur die Gegenseite wird nach Sprechern aufgeteilt. |
+| **Meetings** | Mikrofon und/oder PC-Audio (Windows: WASAPI-Loopback, macOS ab 14.6: Core-Audio-Process-Tap), Live-Transkript, danach Sprechererkennung (Sortformer), umbenennbare Sprecher, automatische Notizen, Export als PDF oder Text. Mit beiden Quellen bleiben die Spuren getrennt: Das Mikrofon ist „Ich“ (Lautsprecher-Echo wird mit WebRTC AEC3 abgezogen und Reste herausgefiltert), nur die Gegenseite wird nach Sprechern aufgeteilt. |
 | **Dateien** | Audio, Video oder ganze Ordner per Drag & Drop – eine Textdatei pro Aufnahme, im Hintergrund mit Fortschritt. |
 
 ### Modelle & Enhance
 
 | | |
 |---|---|
-| **Spracherkennung** | Parakeet Ultra (Standard), Parakeet v3, Qwen3-ASR 1.7B/0.6B, Canary 1B v2, Parakeet English, Whisper Tiny bis Large v3 – lokal über transcribe.cpp mit Vulkan-GPU. |
+| **Spracherkennung** | Parakeet Ultra (Standard), Parakeet v3, Qwen3-ASR 1.7B/0.6B, Canary 1B v2, Parakeet English, Whisper Tiny bis Large v3 – lokal über transcribe.cpp, auf der GPU per Vulkan (Windows) bzw. Metal (Mac). |
 | **Enhance** | Grammatik, Zeichensetzung, Füllwörter, Selbstkorrekturen und app-gerechte Formatierung (E-Mail, Chat, Code …). Immer an oder über einen zweiten Shortcut. Fällt bei Fehlern auf den Rohtext zurück. |
 
 Enhance läuft über einen dieser Anbieter:
 
 | Anbieter | Wie |
 |---|---|
-| **Lokal** | Gemma 4 über llama.cpp, komplett offline |
+| **Lokal** | Gemma 4 über llama.cpp (Vulkan bzw. Metal), komplett offline |
 | **CLI** | Vorlagen für Claude Code, Codex, Gemini CLI, Pi und Copilot CLI – oder ein eigener Befehl |
 | **API** | Jede OpenAI-kompatible Schnittstelle |
 
@@ -86,12 +87,31 @@ einen Installer (NSIS) und eine portable Zip.
 
 Updates sucht, lädt und installiert die App selbst.
 
+### macOS (Vorschau)
+
+Die Mac-Version für Apple Silicon entsteht bisher nur per Hand
+(Actions → Build → *Run workflow*, das `.dmg` hängt am Lauf) oder lokal, siehe
+[Entwickeln](#entwickeln). Sie ist ad hoc signiert, nicht notarisiert:
+
+1. Beim ersten Öffnen blockiert macOS die App. Unter *Systemeinstellungen → Datenschutz &
+   Sicherheit* auf **Trotzdem öffnen** klicken.
+2. Die Einrichtung fragt nach **Bedienungshilfen** (Shortcuts, Einfügen, markierter Text) und
+   dem **Mikrofon**. Meetings mit System-Audio fragen beim ersten Mal nach *Nur Systemaudio
+   aufnehmen* (ab macOS 14.6).
+3. Nach jedem Update kann macOS die Bedienungshilfen-Freigabe zurücksetzen, weil sich die
+   Ad-hoc-Signatur ändert. Die App zeigt das oben als Hinweis an. Abhilfe schafft erst ein
+   Apple-Developer-Zertifikat mit Notarisierung.
+
+Noch offen auf dem Mac: Selbst-Update (die App verlinkt die Release-Seite), Intel-Macs nur auf
+der CPU, Shortcuts setzen aus, solange eine App „Sichere Eingabe“ aktiv hat (Passwortfelder,
+Terminal).
+
 <br>
 
 ## Entwickeln
 
-**Voraussetzungen** (einmalig, z. B. per `winget`): Rust, Bun, CMake, LLVM, Vulkan SDK und
-Visual Studio Build Tools mit C++.
+**Windows**, Voraussetzungen (einmalig, z. B. per `winget`): Rust, Bun, CMake, LLVM, Vulkan SDK
+und Visual Studio Build Tools mit C++.
 
 ```powershell
 . .\scripts\env.ps1     # PATH, VULKAN_SDK und LIBCLANG_PATH laden
@@ -100,8 +120,23 @@ bun run tauri dev       # Entwicklungsmodus
 bun run tauri build     # Installer (NSIS) unter src-tauri\target\release\bundle
 ```
 
+**macOS**, Voraussetzungen: Xcode Command Line Tools (`xcode-select --install`), Rust, Bun und
+CMake (z. B. `brew install cmake`).
+
+```sh
+bun install
+bun run tauri dev       # Entwicklungsmodus
+bun run tauri build     # Whisper Bird.app und .dmg unter src-tauri/target/release/bundle
+```
+
 > [!TIP]
-> Der erste Build dauert rund 10 Minuten, weil transcribe.cpp mit den Vulkan-Shadern gebaut wird.
+> Der erste Build dauert rund 10 Minuten, weil transcribe.cpp mitgebaut wird (unter Windows
+> samt Vulkan-Shadern).
+
+> [!NOTE]
+> Im Entwicklungsmodus fragt macOS die Bedienungshilfen für das Terminal bzw. die
+> Entwicklungs-Binary ab, nicht für die gebaute App. Nach einem neuen Build kann die Freigabe
+> erneut nötig sein.
 
 | Befehl | Wofür |
 |---|---|
@@ -123,6 +158,8 @@ Nach jedem Patch einmal alles durchlaufen lassen:
 .\scripts\test.ps1 -Quick     # ohne Modelle, ~1 Minute (bun run test:quick)
 .\scripts\test.ps1 -Hardware  # zusätzlich Mikrofon und System-Audio
 ```
+
+Auf dem Mac dasselbe mit `scripts/test.sh` (`--quick`, `--hardware`).
 
 | Schritt | Was geprüft wird |
 |---|---|
@@ -173,6 +210,9 @@ Der Workflow [`.github/workflows/build.yml`](.github/workflows/build.yml) baut a
 laufen TypeScript-Prüfung, UI-Tests und Rust-Unit-Tests; schlägt einer fehl, gibt es weder
 Dateien noch Release. Die End-to-End-Tests mit Modellen laufen nur lokal.
 
+Bei manuellem Start baut ein zweiter Job auf `macos-latest` die Mac-App als `.dmg` (mit
+Rust-Unit-Tests vorab). Sie landet nur als Artifact am Lauf, noch nicht im Release.
+
 | Weg | So geht's |
 |---|---|
 | **Manuell** | `gh workflow run build.yml` (oder Actions → Build → *Run workflow*). Die Dateien hängen danach als Artifact am Lauf (`gh run download`). |
@@ -198,8 +238,9 @@ src-tauri/src/
   meeting.rs      Meeting-Aufnahme, Live-Transkript, Diarisierung, Notizen
   files.rs        Datei-/Ordner-Transkription
   insert.rs       Einfügen und Markierung auslesen
-  win/            Zwischenablage, SendInput, aktive App
-  audio/          Mikrofon, Loopback, Resampler, Decoder, Töne, Ducking
+  platform/       Zwischenablage, Tastatureingaben, aktive App, Berechtigungen
+    macos/        dasselbe für macOS, dazu NSPanel, Ton, Lautstärke, Shell-PATH
+  audio/          Mikrofon, Loopback (WASAPI bzw. Process-Tap), Resampler, Decoder, Töne, Ducking
   overlay.rs      Floating Icon / Statuspille
   tray.rs         Tray- und Kontextmenü
   history.rs      Verlauf & Statistiken (SQLite)
@@ -211,10 +252,10 @@ src/
 
 </details>
 
-| Was | Wo |
-|---|---|
-| Einstellungen, Verlauf, Modelle, Meetings | `%APPDATA%\dev.emil.whisper-island` |
-| Logs | `%LOCALAPPDATA%\dev.emil.whisper-island\logs` |
+| Was | Windows | macOS |
+|---|---|---|
+| Einstellungen, Verlauf, Modelle, Meetings | `%APPDATA%\dev.emil.whisper-island` | `~/Library/Application Support/dev.emil.whisper-island` |
+| Logs | `%LOCALAPPDATA%\dev.emil.whisper-island\logs` | `~/Library/Logs/dev.emil.whisper-island` |
 
 <br>
 
@@ -222,7 +263,9 @@ src/
 
 Audioaufnahme, Hotkeys und Spracherkennung nutzen die MIT-lizenzierten Crates
 `handy-recorder`, `handy-keys` und `transcribe-cpp` aus dem
-[Handy](https://github.com/cjpais/Handy)-Projekt. Enhance läuft lokal über
+[Handy](https://github.com/cjpais/Handy)-Projekt, das auch als Vorbild für die Mac-Version
+diente. Overlay und Kontextmenü sind dort NSPanels über
+[tauri-nspanel](https://github.com/ahkohd/tauri-nspanel). Enhance läuft lokal über
 [llama.cpp](https://github.com/ggml-org/llama.cpp).
 
 Die Lizenzen aller Modelle, Crates und npm-Pakete stehen in

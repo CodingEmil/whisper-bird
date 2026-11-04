@@ -125,7 +125,7 @@ function EditMenu() {
       if (e.key === "Enter" && !e.shiftKey && (e.target as HTMLElement).tagName !== "TEXTAREA") {
         e.preventDefault();
         api.editmenuApply(result);
-      } else if (e.key === "Enter" && e.ctrlKey) {
+      } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
         api.editmenuApply(result);
       }

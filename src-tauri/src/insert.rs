@@ -2,8 +2,8 @@
 //! auslesen – ohne die Zwischenablage des Nutzers zu verlieren, außer der
 //! Text soll dort bleiben.
 
+use crate::platform::{clipboard, input};
 use crate::settings::PasteMethod;
-use crate::win::{clipboard, input};
 use std::time::{Duration, Instant};
 
 pub struct InsertOptions {

@@ -198,7 +198,7 @@ pub fn handle_menu(app: &AppHandle, id: &str) {
     match id {
         "last" => {
             let text = LAST.lock().unwrap().clone();
-            let _ = crate::win::clipboard::set_text(&text, false);
+            let _ = crate::platform::clipboard::set_text(&text, false);
         }
         "dictate" => st.dictation.toggle(Mode::Plain),
         "meeting" => crate::meeting::toggle(),

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Wird mit dem Info.plist von Tauri zusammengeführt. Deutsche Texte: de.lproj/InfoPlist.strings -->
+  <key>CFBundleDevelopmentRegion</key>
+  <string>en</string>
+  <key>CFBundleAllowMixedLocalizations</key>
+  <true/>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>Whisper Bird records your voice to turn it into text. Speech recognition runs locally on your Mac.</string>
+  <key>NSAudioCaptureUsageDescription</key>
+  <string>Whisper Bird records your Mac's audio output to transcribe meetings. Nothing leaves your Mac.</string>
+</dict>
+</plist>

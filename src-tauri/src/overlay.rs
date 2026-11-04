@@ -70,7 +70,12 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
         .focusable(false)
         .focused(false)
         .visible(false)
+        // macOS: Der erste Klick startet das Diktat, statt nur das Fenster zu wecken.
+        .accept_first_mouse(true)
+        .initialization_script(crate::platform_script())
         .build()?;
+    #[cfg(target_os = "macos")]
+    crate::platform::macos::panel::make_overlay(&window)?;
 
     let w = window.clone();
     window.on_window_event(move |event| match event {
@@ -276,6 +281,10 @@ fn default_center(app: &AppHandle) -> (f64, f64) {
 
 /// Zeigt das Fenster ganz oben, ohne es zu aktivieren.
 fn show_no_activate(w: &WebviewWindow) {
+    #[cfg(target_os = "macos")]
+    if crate::platform::macos::panel::show(w.app_handle(), LABEL) {
+        return;
+    }
     #[cfg(windows)]
     {
         use windows::Win32::Foundation::HWND;

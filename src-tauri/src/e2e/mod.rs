@@ -128,6 +128,10 @@ pub fn model(id: &str) -> PathBuf {
     if let Some(appdata) = std::env::var_os("APPDATA") {
         dirs.push(Path::new(&appdata).join("dev.emil.whisper-island").join("models"));
     }
+    // macOS: ~/Library/Application Support/dev.emil.whisper-island
+    if let (true, Some(home)) = (cfg!(target_os = "macos"), std::env::var_os("HOME")) {
+        dirs.push(Path::new(&home).join("Library/Application Support/dev.emil.whisper-island/models"));
+    }
     if let Some(p) = dirs.iter().map(|d| d.join(info.filename)).find(|p| p.exists()) {
         return p;
     }

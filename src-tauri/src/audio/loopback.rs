@@ -1,5 +1,6 @@
-//! System-Audio („was der PC abspielt“) per WASAPI-Loopback aufnehmen.
-//! Liefert 16 kHz mono an den Callback.
+//! System-Audio („was der PC abspielt“) aufnehmen: unter Windows per
+//! WASAPI-Loopback, unter macOS über einen Core-Audio-Process-Tap (cpal, ab
+//! macOS 14.6). Liefert 16 kHz mono an den Callback.
 
 use super::resample::Resampler;
 use super::SAMPLE_RATE;
@@ -20,17 +21,17 @@ impl Loopback {
         let thread = std::thread::Builder::new()
             .name("loopback".into())
             .spawn(move || {
-                #[cfg(windows)]
+                #[cfg(any(windows, target_os = "macos"))]
                 {
                     if let Err(e) = imp::run(&stop2, on_samples, &ready_tx) {
                         log::error!("Loopback-Aufnahme beendet: {e:#}");
                         let _ = ready_tx.send(Err(format!("{e:#}")));
                     }
                 }
-                #[cfg(not(windows))]
+                #[cfg(not(any(windows, target_os = "macos")))]
                 {
                     let _ = (&stop2, on_samples);
-                    let _ = ready_tx.send(Err("nur unter Windows verfügbar".into()));
+                    let _ = ready_tx.send(Err("auf diesem System nicht verfügbar".into()));
                 }
             })?;
         match ready_rx.recv_timeout(std::time::Duration::from_secs(5)) {
@@ -155,6 +156,58 @@ mod imp {
             }
         }
         let _ = client.Stop();
+        Ok(())
+    }
+}
+
+#[cfg(target_os = "macos")]
+mod imp {
+    use super::*;
+    use anyhow::Context;
+    use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
+
+    /// Ein Eingabe-Stream auf dem Ausgabegerät: cpal legt dafür einen Process-Tap
+    /// samt Aggregate-Device an. Beim ersten Mal fragt macOS nach der Freigabe
+    /// „Nur Systemaudio aufnehmen“ (NSAudioCaptureUsageDescription).
+    pub fn run(
+        stop: &AtomicBool,
+        mut on_samples: impl FnMut(&[f32]) + Send + 'static,
+        ready: &std::sync::mpsc::Sender<Result<(), String>>,
+    ) -> anyhow::Result<()> {
+        let device = cpal::default_host()
+            .default_output_device()
+            .context("kein Ausgabegerät gefunden")?;
+        let config = device.default_output_config()?.config();
+        let channels = config.channels.max(1) as usize;
+        let rate = config.sample_rate;
+        let mut resampler = Resampler::new(rate, SAMPLE_RATE);
+        let mut mono = Vec::new();
+        let mut out = Vec::new();
+        let stream = device
+            .build_input_stream::<f32, _, _>(
+                config,
+                move |data: &[f32], _| {
+                    mono.clear();
+                    for frame in data.chunks(channels) {
+                        mono.push(frame.iter().sum::<f32>() / channels as f32);
+                    }
+                    out.clear();
+                    resampler.process(&mono, &mut out);
+                    if !out.is_empty() {
+                        on_samples(&out);
+                    }
+                },
+                |e| log::error!("System-Audio: {e}"),
+                None,
+            )
+            .context("Process-Tap nicht verfügbar (ab macOS 14.6, Freigabe nötig)")?;
+        stream.play()?;
+        let _ = ready.send(Ok(()));
+        log::info!("System-Audio gestartet: {rate} Hz, {channels} Kanäle");
+        while !stop.load(Ordering::SeqCst) {
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+        drop(stream);
         Ok(())
     }
 }

@@ -1,5 +1,7 @@
 // Oberflächentexte (Deutsch / Englisch).
 
+import { isMac } from "./platform";
+
 const de = {
   "app.name": "Whisper Bird",
   "nav.home": "Übersicht",
@@ -368,6 +370,19 @@ const de = {
   "editmenu.working": "Schreibe …",
   "editmenu.listening": "Ich höre zu …",
   "editmenu.hint": "↑↓ wählen, Enter ausführen, Esc schließen",
+
+  "perm.title": "Zwei Freigaben für macOS",
+  "perm.text": "Damit Whisper Bird deine Shortcuts erkennt und Text in andere Apps einfügen kann, braucht es Zugriff auf die Bedienungshilfen. Nach dem Mikrofon fragt macOS beim ersten Diktat; du kannst es auch gleich hier freigeben.",
+  "perm.accessibility": "Bedienungshilfen",
+  "perm.accessibility_hint": "Für Shortcuts, Einfügen und markierten Text. In den Systemeinstellungen Whisper Bird einschalten.",
+  "perm.microphone": "Mikrofon",
+  "perm.microphone_hint": "Für Diktat und Meetings.",
+  "perm.grant": "Freigeben",
+  "perm.open_settings": "Einstellungen öffnen",
+  "perm.granted": "Freigegeben",
+  "perm.denied": "Abgelehnt",
+  "perm.continue": "Weiter",
+  "perm.missing": "Kein Zugriff auf die Bedienungshilfen: Shortcuts und Einfügen funktionieren erst nach der Freigabe. Nach einem Update fragt macOS unter Umständen erneut.",
 };
 
 type Key = keyof typeof de;
@@ -740,12 +755,57 @@ const en: Record<Key, string> = {
   "editmenu.working": "Writing …",
   "editmenu.listening": "Listening …",
   "editmenu.hint": "↑↓ select, Enter run, Esc close",
+
+  "perm.title": "Two permissions for macOS",
+  "perm.text": "Whisper Bird needs Accessibility access to recognize your shortcuts and insert text into other apps. macOS asks for the microphone on your first dictation; you can also allow it right here.",
+  "perm.accessibility": "Accessibility",
+  "perm.accessibility_hint": "For shortcuts, inserting and selected text. Turn on Whisper Bird in System Settings.",
+  "perm.microphone": "Microphone",
+  "perm.microphone_hint": "For dictation and meetings.",
+  "perm.grant": "Allow",
+  "perm.open_settings": "Open Settings",
+  "perm.granted": "Allowed",
+  "perm.denied": "Denied",
+  "perm.continue": "Continue",
+  "perm.missing": "No Accessibility access: shortcuts and inserting only work once it is allowed. After an update, macOS may ask again.",
+};
+
+/** Abweichende Texte unter macOS (Mac statt PC, ⌘ statt Strg, App-Namen statt EXE). */
+const deMac: Partial<Record<Key, string>> = {
+  "models.subtitle": "Alle Modelle laufen lokal auf deinem Mac. Nach dem Download brauchst du kein Internet mehr.",
+  "models.delete_body": "„{name}“ wird von diesem Mac entfernt. Du kannst es jederzeit wieder laden.",
+  "sc.subtitle": "Zum Ändern anklicken, gewünschte Tasten gedrückt halten und wieder loslassen. Zwei Tasten wie „⌃ + Leertaste“, einzelne Funktionstasten oder Modifier wie „⌥ rechts“ sind möglich.",
+  "enh.local_hint": "Läuft komplett auf deinem Mac, mit GPU in etwa einer Sekunde.",
+  "meet.subtitle": "Nimmt Mikrofon und/oder System-Audio auf, transkribiert live und trennt danach nach Sprechern. Mit beiden Quellen bist du am Mikrofon automatisch „Ich“. System-Audio braucht macOS 14.6 oder neuer.",
+  "meet.system": "System-Audio",
+  "adv.clipboard": "Zwischenablage (⌘V)",
+  "adv.auto_enter_hint": "Nach dem Einfügen Enter senden, nur in diesen Apps (App-Name, z. B. Slack).",
+  "adv.auto_enter_placeholder": "z. B. Slack, Enter zum Hinzufügen",
+  "adv.autostart": "Bei der Anmeldung starten",
+  "adv.start_hidden": "Versteckt starten (nur Menüleiste)",
+  "adv.accel_gpu": "GPU (Metal)",
+};
+
+const enMac: Partial<Record<Key, string>> = {
+  "models.subtitle": "All models run locally on your Mac. After downloading, no internet connection is needed.",
+  "models.delete_body": "“{name}” will be removed from this Mac. You can download it again at any time.",
+  "sc.subtitle": "Click to change, hold the desired keys together, then release them. Two-key shortcuts like “⌃ + Space”, single function keys or modifiers like “Right ⌥” are supported.",
+  "enh.local_hint": "Runs entirely on your Mac, about one second with a GPU.",
+  "meet.subtitle": "Records your microphone and/or system audio, transcribes live and splits by speaker afterwards. With both sources, your microphone is automatically “Me”. System audio needs macOS 14.6 or later.",
+  "meet.system": "System audio",
+  "adv.clipboard": "Clipboard (⌘V)",
+  "adv.auto_enter_hint": "Send Enter after inserting, only in these apps (app name, e.g. Slack).",
+  "adv.auto_enter_placeholder": "e.g. Slack, Enter to add",
+  "adv.autostart": "Start at login",
+  "adv.start_hidden": "Start hidden (menu bar only)",
+  "adv.accel_gpu": "GPU (Metal)",
 };
 
 export type TKey = Key;
 
 export function translate(lang: string, key: TKey, vars?: Record<string, string | number>): string {
-  let s = (lang === "de" ? de : en)[key] ?? key;
+  const mac = isMac ? (lang === "de" ? deMac : enMac)[key] : undefined;
+  let s = mac ?? (lang === "de" ? de : en)[key] ?? key;
   if (vars) {
     for (const [k, v] of Object.entries(vars)) s = s.replace(`{${k}}`, String(v));
   }

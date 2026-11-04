@@ -1,5 +1,7 @@
 //! Synthetische Tastatureingaben (Strg+V, Strg+C, Enter, Unicode-Tippen).
+//! Unter macOS mit ⌘ statt Strg, siehe `macos/input.rs`.
 
+#[cfg(not(target_os = "macos"))]
 use std::time::{Duration, Instant};
 
 #[cfg(windows)]
@@ -133,15 +135,18 @@ pub fn copy() {
     imp::ctrl_combo(b'C');
 }
 
-#[cfg(not(windows))]
+#[cfg(target_os = "macos")]
+pub use super::macos::input::{copy, enter, paste, type_text, wait_modifiers_released};
+
+#[cfg(not(any(windows, target_os = "macos")))]
 pub fn paste() {}
-#[cfg(not(windows))]
+#[cfg(not(any(windows, target_os = "macos")))]
 pub fn copy() {}
-#[cfg(not(windows))]
+#[cfg(not(any(windows, target_os = "macos")))]
 pub fn enter() {}
-#[cfg(not(windows))]
+#[cfg(not(any(windows, target_os = "macos")))]
 pub fn type_text(_: &str) {}
-#[cfg(not(windows))]
+#[cfg(not(any(windows, target_os = "macos")))]
 pub fn wait_modifiers_released(_: Duration) {
     let _ = Instant::now();
 }

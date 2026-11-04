@@ -1,7 +1,7 @@
-# Baut die Windows-Exe (Installer + portable Zip).
+# Baut die Windows-Exe (Installer + portable Zip) und, nur manuell, die Mac-App (.dmg).
 # - Manuell: Actions → Build → "Run workflow" (oder `gh workflow run build.yml`)
 #   → Ergebnis als Artifact am Workflow-Lauf.
-# - Tag `vX.Y.Z` pushen → zusätzlich GitHub Release mit beiden Dateien.
+# - Tag `vX.Y.Z` pushen → zusätzlich GitHub Release mit den Windows-Dateien.
 #   `vX.Y.Z-beta.N` wird als Vorabversion veröffentlicht.
 name: Build
 
@@ -172,3 +172,53 @@ jobs:
           gh release create "$GITHUB_REF_NAME" out/* "${prerelease[@]}" \
             --title "Whisper Bird ${{ steps.cfg.outputs.version }}" \
             --notes-file release-notes.md
+
+  # Vorschau der Mac-Version (Apple Silicon): nur bei manuellem Start. Das .dmg hängt
+  # als Artifact am Lauf; in Releases kommt es erst, wenn die Mac-Version getestet ist.
+  # Nicht signiert (ad hoc): beim ersten Start Systemeinstellungen → Datenschutz &
+  # Sicherheit → „Trotzdem öffnen“.
+  macos:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: macos-latest
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: oven-sh/setup-bun@v2
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+          cache-bin: false
+
+      - name: Version
+        id: cfg
+        run: echo "version=$(jq -r .version src-tauri/tauri.conf.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Frontend-Abhängigkeiten
+        run: bun install --frozen-lockfile
+
+      - name: TypeScript
+        run: bun x tsc --noEmit
+
+      # Die UI-Tests laufen schon im Windows-Job; hier zählen die Mac-Pfade im Rust-Code.
+      - name: Rust-Unit-Tests
+        working-directory: src-tauri
+        run: cargo test --release --lib
+
+      - name: Build
+        run: bun run tauri build --bundles app,dmg
+
+      - name: Dateien zusammenstellen
+        run: |
+          mkdir out
+          cp src-tauri/target/release/bundle/dmg/*.dmg out/
+          ls -la out
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: whisper-bird-${{ steps.cfg.outputs.version }}-macos
+          path: out/*

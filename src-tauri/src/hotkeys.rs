@@ -70,12 +70,27 @@ pub struct ShortcutError {
 }
 
 impl Hotkeys {
-    pub fn init(&'static self) -> anyhow::Result<()> {
-        let manager = HotkeyManager::new_with_blocking().or_else(|e| {
+    fn create_manager() -> Result<HotkeyManager, handy_keys::Error> {
+        HotkeyManager::new_with_blocking().or_else(|e| {
             log::warn!("Blockierende Hotkeys nicht verfügbar ({e}), nutze nicht-blockierend");
             HotkeyManager::new()
-        })?;
-        *self.manager.lock().unwrap() = Some(manager);
+        })
+    }
+
+    pub fn init(&'static self) -> anyhow::Result<()> {
+        match Self::create_manager() {
+            Ok(manager) => *self.manager.lock().unwrap() = Some(manager),
+            // macOS: Ohne Bedienungshilfen-Recht gibt es keinen Tastatur-Hook. Die App
+            // startet trotzdem (die Einrichtung fragt danach); sobald das Recht da ist,
+            // werden die Shortcuts nachgeholt.
+            #[cfg(target_os = "macos")]
+            Err(e) => {
+                log::warn!("Shortcuts noch nicht verfügbar: {e}");
+                self.wait_for_permission();
+            }
+            #[cfg(not(target_os = "macos"))]
+            Err(e) => return Err(e.into()),
+        }
         std::thread::Builder::new()
             .name("hotkeys".into())
             .spawn(move || loop {
@@ -89,6 +104,30 @@ impl Hotkeys {
                 }
             })?;
         Ok(())
+    }
+
+    /// Wartet im Hintergrund auf das Bedienungshilfen-Recht und richtet dann die
+    /// Shortcuts ein, ohne dass die App neu starten muss.
+    #[cfg(target_os = "macos")]
+    fn wait_for_permission(&'static self) {
+        std::thread::spawn(move || loop {
+            std::thread::sleep(Duration::from_millis(1500));
+            if !handy_keys::check_accessibility() {
+                continue;
+            }
+            match Self::create_manager() {
+                Ok(manager) => {
+                    *self.manager.lock().unwrap() = Some(manager);
+                    log::info!("Bedienungshilfen freigegeben, Shortcuts aktiv");
+                    for e in self.apply() {
+                        log::warn!("Shortcut {}: {}", e.field, e.message);
+                    }
+                    let _ = tauri::Emitter::emit(&state().app, "permissions-changed", ());
+                    return;
+                }
+                Err(e) => log::warn!("Shortcuts trotz Freigabe nicht verfügbar: {e}"),
+            }
+        });
     }
 
     /// Registriert alle Shortcuts aus den Einstellungen neu.
@@ -245,8 +284,11 @@ impl Hotkeys {
     /// Windows den Low-Level-Hook dieses Prozesses nicht auf. Die Oberfläche
     /// meldet ihre Tasten deshalb selbst. Dort, wo der Hook greift, blockiert er
     /// die Kombi, bevor die WebView sie sieht, also löst nichts doppelt aus.
+    ///
+    /// Unter macOS sieht der Event-Tap auch die Tasten des eigenen Fensters;
+    /// eine zweite Meldung würde Shortcuts doppelt auslösen.
     pub fn window_key(&self, modifiers: Modifiers, key: Option<Key>, down: bool) {
-        if self.suspended.load(Ordering::SeqCst) {
+        if cfg!(target_os = "macos") || self.suspended.load(Ordering::SeqCst) {
             return;
         }
         let events = {

@@ -2,6 +2,7 @@ import { FolderOpen } from "lucide-react";
 import { api, type Accelerator, type PasteMethod } from "../lib/api";
 import { Card, Row, Segmented, Select, Toggle, useApp } from "../lib/app";
 import { ChipInput } from "./Words";
+import { isMac } from "../lib/platform";
 
 export default function Advanced() {
   const { t, settings: s, update } = useApp();
@@ -36,7 +37,8 @@ export default function Advanced() {
               update({
                 auto_enter_apps: apps.map((a) => {
                   const x = a.toLowerCase();
-                  return x.endsWith(".exe") ? x : `${x}.exe`;
+                  // Windows vergleicht mit dem EXE-Namen, macOS mit dem App-Namen.
+                  return isMac || x.endsWith(".exe") ? x : `${x}.exe`;
                 }),
               })
             }

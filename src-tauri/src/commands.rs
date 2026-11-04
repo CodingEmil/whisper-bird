@@ -229,25 +229,25 @@ pub fn llama_status() -> LlamaStatus {
         installed: st.enhancer.llama.is_installed(),
         running: st.enhancer.llama.is_running(),
         downloading: st.downloads.is_active("llama-server"),
-        size: llama::LLAMA_ZIP_SIZE,
+        size: llama::LLAMA_PACKAGE_SIZE,
     }
 }
 
 #[tauri::command]
 pub fn install_llama() -> CmdResult<()> {
     let st = state();
-    let zip = st.enhancer.llama.bin_dir().join("llama-server.zip");
+    let package = st.enhancer.llama.bin_dir().join(llama::package_file_name());
     st.downloads.start(
         st.app.clone(),
         DownloadRequest {
             id: "llama-server".into(),
-            url: llama::zip_url(),
-            dest: zip.clone(),
-            size: llama::LLAMA_ZIP_SIZE,
-            sha256: Some(llama::LLAMA_ZIP_SHA256.into()),
+            url: llama::package_url(),
+            dest: package.clone(),
+            size: llama::LLAMA_PACKAGE_SIZE,
+            sha256: Some(llama::LLAMA_PACKAGE_SHA256.into()),
         },
         move |app| {
-            let result = state().enhancer.llama.install_from_zip(&zip);
+            let result = state().enhancer.llama.install(&package);
             if let Err(e) = &result {
                 log::error!("llama-server konnte nicht entpackt werden: {e:#}");
             }
@@ -297,6 +297,23 @@ pub fn window_key(modifiers: String, key: Option<String>, down: bool) {
 #[tauri::command]
 pub fn window_blur() {
     state().hotkeys.window_blur();
+}
+
+// ---------- Berechtigungen (macOS) ----------
+
+#[tauri::command]
+pub fn permissions_status() -> crate::platform::permissions::Permissions {
+    crate::platform::permissions::status()
+}
+
+#[tauri::command]
+pub fn permission_request(kind: String) {
+    crate::platform::permissions::request(&kind);
+}
+
+#[tauri::command]
+pub fn permission_open_settings(kind: String) {
+    crate::platform::permissions::open_settings(&kind);
 }
 
 // ---------- Diktat & Overlay ----------
@@ -351,7 +368,7 @@ pub fn reset_stats() -> CmdResult<()> {
 
 #[tauri::command]
 pub fn copy_text(text: String) -> CmdResult<()> {
-    crate::win::clipboard::set_text(&text, false).map_err(err)
+    crate::platform::clipboard::set_text(&text, false).map_err(err)
 }
 
 // ---------- Enhance ----------
@@ -366,10 +383,11 @@ pub async fn enhance_test() -> CmdResult<String> {
     } else {
         "uh so i wanted to ask if we can meet tomorrow at three no at four and um if you could bring the documents"
     };
-    let app = crate::win::foreground::AppContext {
+    let app = crate::platform::foreground::AppContext {
         exe: "outlook.exe".into(),
+        name: "Outlook".into(),
         title: "Outlook".into(),
-        hwnd: 0,
+        ..Default::default()
     };
     let ctx = crate::enhance::DictationContext {
         app: &app,
@@ -404,7 +422,7 @@ pub fn editmenu_apply(text: String) -> CmdResult<()> {
 
 #[tauri::command]
 pub fn editmenu_copy(text: String) -> CmdResult<()> {
-    crate::win::clipboard::set_text(&text, false).map_err(err)?;
+    crate::platform::clipboard::set_text(&text, false).map_err(err)?;
     crate::editmenu::close(true);
     Ok(())
 }

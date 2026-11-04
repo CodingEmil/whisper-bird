@@ -3,9 +3,9 @@
 
 use crate::history::NewEntry;
 use crate::insert::{self, InsertOptions};
+use crate::platform::foreground::{self, AppContext};
 use crate::settings::EditAction;
 use crate::state::state;
-use crate::win::foreground::{self, AppContext};
 use serde::Serialize;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
@@ -58,7 +58,10 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
         .always_on_top(true)
         .skip_taskbar(true)
         .visible(false)
+        .initialization_script(crate::platform_script())
         .build()?;
+    #[cfg(target_os = "macos")]
+    crate::platform::macos::panel::make_menu(&window)?;
     window.on_window_event(|event| {
         // Je nach Einstellung schließt ein Klick daneben das Menü. Bleibt es offen,
         // lässt sich in der App neuer Text markieren und übernehmen (siehe `open`).
@@ -91,11 +94,15 @@ pub fn is_open() -> bool {
 
 /// Ist das Menü vorn (hat es den Fokus)?
 fn is_foreground() -> bool {
+    let Some(w) = state().app.get_webview_window(LABEL) else { return false };
     #[cfg(windows)]
-    if let Some(Ok(h)) = state().app.get_webview_window(LABEL).map(|w| w.hwnd()) {
-        return h.0 as isize == foreground::active_app().hwnd;
-    }
-    false
+    let focused = w.hwnd().is_ok_and(|h| h.0 as isize == foreground::active_app().handle);
+    // macOS: Das Panel hat die Tastatur, auch wenn die Ziel-App aktiv bleibt.
+    #[cfg(target_os = "macos")]
+    let focused = w.is_focused().unwrap_or(false);
+    #[cfg(not(any(windows, target_os = "macos")))]
+    let focused = { let _ = w; false };
+    focused
 }
 
 /// Vom Shortcut aufgerufen (Hotkey-Thread). Ist das Menü schon offen, schließt
@@ -144,8 +151,13 @@ pub fn open() {
         if let Some(pos) = menu_position(&app) {
             let _ = w.set_position(pos);
         }
-        let _ = w.set_focusable(false);
         let _ = w.emit_to(LABEL, "editmenu-open", &payload);
+        // macOS: Das Panel erscheint ohne Tastatur, bis force_foreground sie ihm gibt.
+        #[cfg(target_os = "macos")]
+        if crate::platform::macos::panel::show(&app, LABEL) {
+            return;
+        }
+        let _ = w.set_focusable(false);
         let _ = w.show();
     });
     let selection = insert::capture_selection();
@@ -165,6 +177,7 @@ pub fn open() {
     let app = st.app.clone();
     let _ = st.app.run_on_main_thread(move || {
         let Some(w) = app.get_webview_window(LABEL) else { return };
+        #[cfg(not(target_os = "macos"))]
         let _ = w.set_focusable(true);
         if still_open {
             let _ = w.emit_to(LABEL, "editmenu-selection", &payload);
@@ -221,7 +234,12 @@ fn menu_position(app: &AppHandle) -> Option<PhysicalPosition<i32>> {
 
 /// Windows erlaubt Hintergrundprozessen das Fokussieren nur eingeschränkt;
 /// über AttachThreadInput an den aktuellen Vordergrund-Thread klappt es.
+/// macOS: Das Panel bekommt die Tastatur, ohne die App zu aktivieren.
 fn force_foreground(w: &tauri::WebviewWindow) {
+    #[cfg(target_os = "macos")]
+    if crate::platform::macos::panel::focus(w) {
+        return;
+    }
     #[cfg(windows)]
     unsafe {
         use windows::Win32::Foundation::HWND;
@@ -263,7 +281,7 @@ pub fn close(restore_focus: bool) {
     st.hotkeys.window_blur();
     if restore_focus {
         if let Some(s) = session {
-            foreground::focus(s.target.hwnd);
+            foreground::focus(s.target.handle);
         }
     }
 }
@@ -300,7 +318,7 @@ pub fn apply(text: String) -> Result<(), String> {
     std::thread::spawn(move || {
         let st = state();
         let s = st.settings();
-        foreground::focus(session.target.hwnd);
+        foreground::focus(session.target.handle);
         std::thread::sleep(Duration::from_millis(180));
         if let Err(e) = insert::insert_text(
             &text,

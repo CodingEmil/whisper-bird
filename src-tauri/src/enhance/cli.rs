@@ -23,17 +23,20 @@ pub async fn run(command: &str, prompt: &str, timeout: Duration) -> anyhow::Resu
         anyhow::bail!("Kein CLI-Befehl konfiguriert");
     }
     // Über cmd.exe starten, damit .cmd/.ps1-Shims (npm-Installationen) gefunden werden.
-    let mut cmd = tokio::process::Command::new("cmd.exe");
     #[cfg(windows)]
-    {
+    let mut cmd = {
+        let mut cmd = tokio::process::Command::new("cmd.exe");
         cmd.raw_arg(format!("/D /S /C \"{command}\""));
         cmd.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
-    }
+        cmd
+    };
+    // macOS: Der PATH der Login-Shell wurde beim Start übernommen (platform::macos::shell).
     #[cfg(not(windows))]
-    {
-        cmd = tokio::process::Command::new("sh");
+    let mut cmd = {
+        let mut cmd = tokio::process::Command::new("/bin/sh");
         cmd.args(["-c", command]);
-    }
+        cmd
+    };
     // Neutrales Arbeitsverzeichnis, damit keine Projektdateien (CLAUDE.md …) greifen.
     cmd.current_dir(std::env::temp_dir())
         .stdin(std::process::Stdio::piped())
@@ -52,7 +55,11 @@ pub async fn run(command: &str, prompt: &str, timeout: Duration) -> anyhow::Resu
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         let detail = stderr.lines().rev().find(|l| !l.trim().is_empty()).unwrap_or("").trim();
-        if stderr.contains("is not recognized") || stderr.contains("wird nicht als interner") {
+        if stderr.contains("is not recognized")
+            || stderr.contains("wird nicht als interner")
+            || stderr.contains("command not found")
+            || output.status.code() == Some(127)
+        {
             anyhow::bail!("Befehl nicht gefunden. Ist die CLI installiert und im PATH?");
         }
         anyhow::bail!("CLI-Fehler ({}): {detail}", output.status);

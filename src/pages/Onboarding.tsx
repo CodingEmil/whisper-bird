@@ -5,6 +5,8 @@ import { Dots, Progress, Segmented, useApp } from "../lib/app";
 import { useModels } from "./Models";
 import { WithShortcut } from "./Home";
 import { Bird } from "../lib/bird";
+import { isMac } from "../lib/platform";
+import { PermissionList, usePermissions } from "../lib/permissions";
 
 const CHOICES = ["parakeet-ultra","Qwen3-ASR-1.7B", "whisper-large-v3-turbo", "parakeet-unified-en-0.6b"];
 
@@ -12,7 +14,9 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
   const { t, settings: s, update, lang } = useApp();
   const { models, progress } = useModels();
   const [choice, setChoice] = useState(s.asr_model || CHOICES[0]);
-  const [step, setStep] = useState<"model" | "download" | "try">("model");
+  // Unter macOS zuerst die Freigaben, sonst kommen Shortcuts und Einfügen nicht an.
+  const [step, setStep] = useState<"permissions" | "model" | "download" | "try">(isMac ? "permissions" : "model");
+  const perms = usePermissions();
 
   const model = models.find((m) => m.id === choice);
   const p = progress[choice];
@@ -44,6 +48,20 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
             onChange={(ui_language) => update({ ui_language })}
           />
         </div>
+
+        {step === "permissions" && (
+          <>
+            <h1 className="page-title">{t("onb.welcome")}</h1>
+            <h2 className="card-title">{t("perm.title")}</h2>
+            <p className="page-sub">{t("perm.text")}</p>
+            {perms && <PermissionList perms={perms} />}
+            <div className="onboarding-actions end">
+              <button type="button" className="btn primary large" onClick={() => setStep("model")}>
+                {t("perm.continue")}
+              </button>
+            </div>
+          </>
+        )}
 
         {step === "model" && (
           <>

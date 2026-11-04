@@ -99,7 +99,9 @@ impl Updates {
 }
 
 fn detect_mode() -> Option<Mode> {
-    if cfg!(debug_assertions) {
+    // macOS: Selbst-Update kommt später (signiertes .app-Bundle tauschen).
+    // Bis dahin zeigt die App nur die neue Version mit Link zur Release-Seite.
+    if cfg!(debug_assertions) || cfg!(target_os = "macos") {
         return None;
     }
     let exe = std::env::current_exe().ok()?;

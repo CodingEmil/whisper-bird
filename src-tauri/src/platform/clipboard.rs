@@ -1,14 +1,23 @@
-//! Zwischenablage über Win32: Text setzen/lesen und den kompletten Inhalt
-//! sichern und wiederherstellen (Text, Bilder, Dateien, Formatierungen).
+//! Zwischenablage: Text setzen/lesen und den kompletten Inhalt sichern und
+//! wiederherstellen (Text, Bilder, Dateien, Formatierungen). Windows über Win32,
+//! macOS über NSPasteboard (`macos/clipboard.rs`).
 
 #[derive(Default)]
 pub struct Snapshot {
+    /// Windows: Format-ID und Rohdaten.
+    #[cfg(not(target_os = "macos"))]
     formats: Vec<(u32, Vec<u8>)>,
+    /// macOS: pro Eintrag der Zwischenablage die Typen (UTI) samt Daten.
+    #[cfg(target_os = "macos")]
+    pub(in crate::platform) items: Vec<Vec<(String, Vec<u8>)>>,
 }
 
 impl Snapshot {
     pub fn is_empty(&self) -> bool {
-        self.formats.is_empty()
+        #[cfg(not(target_os = "macos"))]
+        return self.formats.is_empty();
+        #[cfg(target_os = "macos")]
+        return self.items.is_empty();
     }
 }
 
@@ -165,23 +174,26 @@ mod imp {
 #[cfg(windows)]
 pub use imp::{clear, get_text, restore, sequence, set_text, snapshot};
 
-#[cfg(not(windows))]
+#[cfg(target_os = "macos")]
+pub use super::macos::clipboard::{clear, get_text, restore, sequence, set_text, snapshot};
+
+#[cfg(not(any(windows, target_os = "macos")))]
 pub fn snapshot() -> Snapshot {
     Snapshot::default()
 }
-#[cfg(not(windows))]
+#[cfg(not(any(windows, target_os = "macos")))]
 pub fn restore(_: &Snapshot) {}
-#[cfg(not(windows))]
+#[cfg(not(any(windows, target_os = "macos")))]
 pub fn set_text(_: &str, _: bool) -> anyhow::Result<()> {
     Ok(())
 }
-#[cfg(not(windows))]
+#[cfg(not(any(windows, target_os = "macos")))]
 pub fn get_text() -> Option<String> {
     None
 }
-#[cfg(not(windows))]
+#[cfg(not(any(windows, target_os = "macos")))]
 pub fn sequence() -> u32 {
     0
 }
-#[cfg(not(windows))]
+#[cfg(not(any(windows, target_os = "macos")))]
 pub fn clear() {}

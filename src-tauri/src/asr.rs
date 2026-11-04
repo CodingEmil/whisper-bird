@@ -48,9 +48,15 @@ fn backend(accel: Accelerator) -> Backend {
     match accel {
         Accelerator::Auto => Backend::Auto,
         Accelerator::Cpu => Backend::Cpu,
-        Accelerator::Gpu => Backend::Vulkan,
+        Accelerator::Gpu => GPU_BACKEND,
     }
 }
+
+/// Die GPU-Schnittstelle dieses Builds (siehe Cargo.toml).
+#[cfg(target_os = "macos")]
+const GPU_BACKEND: Backend = Backend::Metal;
+#[cfg(not(target_os = "macos"))]
+const GPU_BACKEND: Backend = Backend::Vulkan;
 
 impl Default for Asr {
     fn default() -> Self {

@@ -1,5 +1,6 @@
-//! Aufnahme über echte Geräte – nur mit `scripts/test.ps1 -Hardware`. Der
-//! Loopback-Test spielt die Kennedy-Rede (11 s) über den Standard-Lautsprecher ab.
+//! Aufnahme über echte Geräte – nur mit `scripts/test.ps1 -Hardware` (macOS:
+//! `scripts/test.sh --hardware`). Der Loopback-Test spielt die Kennedy-Rede
+//! (11 s) über den Standard-Lautsprecher ab.
 
 use super::*;
 use super::transkription::JFK_TEXT;
@@ -53,9 +54,15 @@ fn play_blocking(path: &Path) {
     assert!(ok.as_bool(), "Wiedergabe fehlgeschlagen");
 }
 
-#[cfg(windows)]
+#[cfg(target_os = "macos")]
+fn play_blocking(path: &Path) {
+    let ok = std::process::Command::new("afplay").arg(path).status().is_ok_and(|s| s.success());
+    assert!(ok, "Wiedergabe fehlgeschlagen");
+}
+
+#[cfg(any(windows, target_os = "macos"))]
 #[test]
-#[ignore = "Hardware: Lautsprecher – scripts/test.ps1 -Hardware"]
+#[ignore = "Hardware: Lautsprecher – scripts/test.ps1 -Hardware bzw. scripts/test.sh --hardware"]
 fn systemaudio_wird_mitgeschnitten_und_erkannt() {
     let path = fixture(&JFK);
     let asr = asr();

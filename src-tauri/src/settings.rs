@@ -308,6 +308,10 @@ fn system_ui_language() -> String {
             return "de".into();
         }
     }
+    #[cfg(target_os = "macos")]
+    if crate::platform::macos::preferred_language().starts_with("de") {
+        return "de".into();
+    }
     "en".into()
 }
 

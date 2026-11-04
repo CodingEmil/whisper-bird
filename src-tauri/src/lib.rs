@@ -15,18 +15,24 @@ mod i18n;
 mod insert;
 mod meeting;
 mod overlay;
+mod platform;
 mod settings;
 mod state;
 mod text;
 mod tray;
 mod updates;
-mod win;
 
 use state::{state, Dirs};
 use std::time::Duration;
 use tauri::{Emitter, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 
 pub const MAIN_LABEL: &str = "main";
+
+/// Teilt der Oberfläche die Plattform mit ("windows", "macos" …): Tastennamen,
+/// Texte und die Berechtigungen in der Einrichtung hängen davon ab.
+pub fn platform_script() -> String {
+    format!("window.__WB_PLATFORM__ = {:?};", std::env::consts::OS)
+}
 
 /// Öffnet (oder erzeugt) das Einstellungsfenster, optional auf einer Seite.
 pub fn show_main_window(page: Option<&str>) {
@@ -41,6 +47,7 @@ pub fn show_main_window(page: Option<&str>) {
                 .min_inner_size(900.0, 600.0)
                 .center()
                 .theme(Some(tauri::Theme::Dark))
+                .initialization_script(platform_script())
                 // Erst nach dem Einfärben der Titelleiste zeigen (show() unten).
                 .visible(false)
                 .build()
@@ -123,6 +130,10 @@ fn background_tasks() {
 }
 
 pub fn run() {
+    // Vor allen Threads: Kindprozesse (CLI-Enhance, ffmpeg) sollen den PATH des Nutzers sehen.
+    #[cfg(target_os = "macos")]
+    platform::macos::shell::adopt_login_path();
+
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|_app, _args, _cwd| {
             show_main_window(None);
@@ -151,7 +162,11 @@ pub fn run() {
             Some(vec!["--hidden"]),
         ))
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_opener::init());
+    // Overlay und Kontextmenü sind unter macOS NSPanels (siehe overlay.rs).
+    #[cfg(target_os = "macos")]
+    let builder = builder.plugin(tauri_nspanel::init());
+    let builder = builder
         .invoke_handler(tauri::generate_handler![
             commands::get_settings,
             commands::set_settings,
@@ -211,6 +226,9 @@ pub fn run() {
             commands::update_install,
             commands::update_open_page,
             commands::update_notice_seen,
+            commands::permissions_status,
+            commands::permission_request,
+            commands::permission_open_settings,
         ])
         .setup(|app| {
             let handle = app.handle().clone();
@@ -227,7 +245,8 @@ pub fn run() {
             log::set_max_level(if s.debug_logging { log::LevelFilter::Debug } else { log::LevelFilter::Info });
             log::info!("Whisper Bird {} startet", app.package_info().version);
 
-            // Maßgeblich ist Windows: Installer und Task-Manager ändern den Autostart an der App vorbei.
+            // Maßgeblich ist das System: Installer, Task-Manager bzw. Anmeldeobjekte ändern den
+            // Autostart an der App vorbei.
             {
                 use tauri_plugin_autostart::ManagerExt;
                 match app.autolaunch().is_enabled() {
@@ -274,7 +293,14 @@ pub fn run() {
     app.run(|_app, event| match event {
         // Ohne expliziten Exit-Code (letztes Fenster zu) im Tray weiterlaufen.
         RunEvent::ExitRequested { api, code, .. } if code.is_none() => api.prevent_exit(),
-        RunEvent::Exit => updates::start_replacement(),
+        RunEvent::Exit => {
+            // Ohne Job-Objekt (nur Windows) liefe der llama-server sonst weiter.
+            state().enhancer.llama.stop();
+            updates::start_replacement();
+        }
+        // Klick aufs Dock-Symbol, während das Fenster versteckt ist.
+        #[cfg(target_os = "macos")]
+        RunEvent::Reopen { .. } => show_main_window(None),
         _ => {}
     });
 }

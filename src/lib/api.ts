@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { isMac } from "./platform";
 
 export type Activation = "toggle" | "push_to_talk" | "hybrid";
 export type PasteMethod = "clipboard" | "type";
@@ -161,6 +162,15 @@ export interface AppInfo {
   asr_loaded: string | null;
 }
 
+export interface Permissions {
+  /** Muss der Nutzer etwas freigeben (nur macOS)? */
+  required: boolean;
+  accessibility: boolean;
+  microphone: "granted" | "denied" | "not_determined" | "unknown";
+}
+
+export type PermissionKind = "accessibility" | "microphone";
+
 export interface UpdateStatus {
   current: string;
   /** Neuere Version, falls es eine gibt. */
@@ -230,6 +240,9 @@ export const api = {
   defaultSystemPrompt: () => invoke<string>("default_system_prompt"),
   defaultEditActions: () => invoke<EditAction[]>("default_edit_actions"),
   appInfo: () => invoke<AppInfo>("app_info"),
+  permissionsStatus: () => invoke<Permissions>("permissions_status"),
+  permissionRequest: (kind: PermissionKind) => invoke<void>("permission_request", { kind }),
+  permissionOpenSettings: (kind: PermissionKind) => invoke<void>("permission_open_settings", { kind }),
   listModels: () => invoke<ModelStatus[]>("list_models"),
   downloadModel: (id: string) => invoke<void>("download_model", { id }),
   cancelDownload: (id: string) => invoke<void>("cancel_download", { id }),
@@ -314,11 +327,29 @@ export function formatDuration(ms: number): string {
   return `${m}:${String(sec).padStart(2, "0")}`;
 }
 
-/** Zeigt handy-keys-Kombis mit Windows-Namen an. */
+/** Zeigt handy-keys-Kombis mit den Tastennamen des Systems an (Windows bzw. Mac-Symbole). */
 export function formatShortcut(s: string, lang: string): string {
   if (!s) return "";
   const de = lang === "de";
-  const map: Record<string, string> = {
+  const side = (key: string, right: boolean) => (de ? `${key} ${right ? "rechts" : "links"}` : `${right ? "Right" : "Left"} ${key}`);
+  const mac: Record<string, string> = {
+    Ctrl: "⌃",
+    CtrlLeft: side("⌃", false),
+    CtrlRight: side("⌃", true),
+    Opt: "⌥",
+    OptLeft: side("⌥", false),
+    OptRight: side("⌥", true),
+    Shift: "⇧",
+    ShiftLeft: side("⇧", false),
+    ShiftRight: side("⇧", true),
+    Cmd: "⌘",
+    CmdLeft: side("⌘", false),
+    CmdRight: side("⌘", true),
+    Space: de ? "Leertaste" : "Space",
+    Escape: "esc",
+    Return: "↩",
+  };
+  const map: Record<string, string> = isMac ? mac : {
     Ctrl: de ? "Strg" : "Ctrl",
     CtrlLeft: de ? "Strg links" : "Left Ctrl",
     CtrlRight: de ? "Strg rechts" : "Right Ctrl",
