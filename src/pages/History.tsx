@@ -37,6 +37,7 @@ export function HistoryItem({ entry, compact, onDelete }: { entry: HistoryEntry;
           {entry.app && <span className="app">{entry.app}</span>}
           {entry.language && <span>{languageName(entry.language)}</span>}
           {entry.duration_ms > 0 && <span className="num">{formatDuration(entry.duration_ms)}</span>}
+          {!compact && entry.model && <span>{entry.model}</span>}
           <span className={`badge ${entry.source === "enhanced" ? "accent" : ""}`}>
             {entry.source === "enhanced" && <Sparkles size={11} />}
             {t(SOURCE_KEY[entry.source])}
