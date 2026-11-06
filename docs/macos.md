@@ -108,7 +108,7 @@ Stand: Version 0.2.1.
 |---|---|
 | **Absturzmeldung beim Beenden**, solange ein Spracherkennungsmodell geladen ist. | Meldung schließen und die App bei Bedarf neu starten. Im Test blieben Einstellungen und Verlauf dabei erhalten. |
 | **Overlay springt in die Mitte**, wenn eine Aufnahme startet oder endet oder die App neu startet. Betrifft vor allem Positionen in der rechten oder unteren Bildschirmhälfte auf Retina-Displays. | In 0.2.1 gibt es dafür keine Lösung. Sobald die Korrektur erschienen ist, den Vogel einmal neu an die gewünschte Stelle ziehen. |
-| **Das erste Diktat nach dem Start reagiert verzögert.** Das Mikrofon brauchte im Test beim ersten Mal 5 bis 7 Sekunden, später nur noch Millisekunden. | Beim ersten Diktat ein paar Sekunden warten, bevor du sprichst. Fehlt der Anfang, ihn noch einmal sprechen. |
+| **Das erste Diktat einer neuen Version kann verzögert starten.** Das Mikrofon brauchte im Test dabei 5 bis 7 Sekunden, danach nur noch Millisekunden, auch nach einem Neustart der App. | Beim ersten Diktat nach dem Update ein paar Sekunden warten, bevor du sprichst. Fehlt der Anfang, ihn noch einmal sprechen. |
 
 ## Gut zu wissen
 
