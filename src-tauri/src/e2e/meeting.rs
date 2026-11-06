@@ -36,6 +36,7 @@ fn record_tracks(mic: &[f32], sys: &[f32], language: Option<&str>) -> Recorded {
         language: language.map(str::to_string),
         vocabulary: &[],
         cancel: None,
+        model: None,
     };
     let mut m = Meeting {
         id: "e2e".into(),
@@ -218,7 +219,7 @@ fn deutscher_dialog_mit_zwei_sprechern() {
     let mut expected: Vec<(String, String)> = Vec::new();
     for t in &reference {
         let parts = asr()
-            .transcribe_long(&pcm[range_ms(t)], &AsrOptions { language: None, vocabulary: &[], cancel: None }, &mut |_| {})
+            .transcribe_long(&pcm[range_ms(t)], &AsrOptions { language: None, vocabulary: &[], cancel: None, model: None }, &mut |_| {})
             .unwrap();
         expected.push((t.2.clone(), parts.iter().map(|p| p.text.as_str()).collect::<Vec<_>>().join(" ")));
     }
@@ -293,7 +294,7 @@ fn getrennte_spuren_ich_und_gegenseite() {
     let mut expected: Vec<(String, String)> = Vec::new();
     for t in &reference {
         let parts = asr()
-            .transcribe_long(&pcm[range_ms(t)], &AsrOptions { language: None, vocabulary: &[], cancel: None }, &mut |_| {})
+            .transcribe_long(&pcm[range_ms(t)], &AsrOptions { language: None, vocabulary: &[], cancel: None, model: None }, &mut |_| {})
             .unwrap();
         expected.push((t.2.clone(), parts.iter().map(|p| p.text.as_str()).collect::<Vec<_>>().join(" ")));
     }
@@ -334,7 +335,7 @@ fn echtes_geraete_echo_landet_nicht_bei_ich() {
     // Meine Beiträge: zwei Stücke Bierkrieg, an Sprechpausen geschnitten.
     let bierkrieg = load_audio(&fixture(&DE_BIERKRIEG));
     let (own_pcm, own_turns) = dialog(&[(&bierkrieg, "ich")], &[20.0, 20.0]);
-    let opts = AsrOptions { language: None, vocabulary: &[], cancel: None };
+    let opts = AsrOptions { language: None, vocabulary: &[], cancel: None, model: None };
     let rms = |x: &[f32]| (x.iter().map(|v| v * v).sum::<f32>() / x.len().max(1) as f32).sqrt();
     let gap = SR * 2 / 5;
     let mut me_wers = Vec::new();

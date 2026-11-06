@@ -77,7 +77,7 @@ fn systemaudio_wird_mitgeschnitten_und_erkannt() {
     lb.stop();
     let pcm = std::mem::take(&mut *captured.lock().unwrap());
     let text = asr
-        .transcribe(&pcm, &AsrOptions { language: None, vocabulary: &[], cancel: None })
+        .transcribe(&pcm, &AsrOptions { language: None, vocabulary: &[], cancel: None, model: None })
         .map(|r| crate::text::clean(&r.text, true))
         .unwrap_or_default();
     let wer = wer(JFK_TEXT, &text);

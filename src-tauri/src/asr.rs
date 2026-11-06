@@ -2,19 +2,29 @@
 //! zerlegt lange Aufnahmen per Silero-VAD und liefert Text + Sprache.
 
 use crate::settings::Accelerator;
-use std::path::Path;
-use std::sync::Mutex;
+use std::path::{Path, PathBuf};
+use std::sync::{Mutex, MutexGuard};
 use std::time::Instant;
 use transcribe_cpp::{
     Backend, CancelToken, Feature, Model, ModelOptions, RunOptions, Session, VadOptions,
     VadSession,
 };
 
+/// Modell, auf das ein langer Lauf (Meeting, Datei) festgelegt ist.
+pub struct AsrModel {
+    pub id: String,
+    pub path: PathBuf,
+    pub accel: Accelerator,
+}
+
 pub struct AsrOptions<'a> {
     /// ISO-Code oder None für automatische Erkennung.
     pub language: Option<String>,
     pub vocabulary: &'a [String],
     pub cancel: Option<&'a CancelToken>,
+    /// Wird vor jedem Abschnitt nachgeladen, falls ein Diktat dazwischen das Modell
+    /// gewechselt hat. None = das gerade geladene.
+    pub model: Option<&'a AsrModel>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -85,7 +95,10 @@ impl Asr {
 
     /// Lädt das Modell, falls noch nicht (oder ein anderes) geladen ist.
     pub fn ensure_loaded(&self, id: &str, path: &Path, accel: Accelerator) -> anyhow::Result<()> {
-        let mut guard = self.loaded.lock().unwrap();
+        self.load_into(&mut self.loaded.lock().unwrap(), id, path, accel)
+    }
+
+    fn load_into(&self, guard: &mut Option<Loaded>, id: &str, path: &Path, accel: Accelerator) -> anyhow::Result<()> {
         if guard.as_ref().map(|l| l.id == id).unwrap_or(false) {
             return Ok(());
         }
@@ -120,6 +133,15 @@ impl Asr {
         });
         *self.last_used.lock().unwrap() = Instant::now();
         Ok(())
+    }
+
+    /// Das Modell für diesen Lauf, im selben Lock geladen wie benutzt.
+    fn lock_model(&self, opts: &AsrOptions) -> anyhow::Result<MutexGuard<'_, Option<Loaded>>> {
+        let mut guard = self.loaded.lock().unwrap();
+        if let Some(m) = opts.model {
+            self.load_into(&mut guard, &m.id, &m.path, m.accel)?;
+        }
+        Ok(guard)
     }
 
     /// Lädt das VAD-Modell (klein, bleibt geladen).
@@ -164,9 +186,7 @@ impl Asr {
     /// Transkribiert einen Block (Diktat). Lange Blöcke werden zerlegt.
     pub fn transcribe(&self, pcm: &[f32], opts: &AsrOptions) -> anyhow::Result<AsrResult> {
         let max_ms = self
-            .loaded
-            .lock()
-            .unwrap()
+            .lock_model(opts)?
             .as_ref()
             .map(|l| l.max_audio_ms)
             .ok_or_else(|| anyhow::anyhow!("Kein Modell geladen"))?;
@@ -180,7 +200,7 @@ impl Asr {
     }
 
     fn run(&self, pcm: &[f32], opts: &AsrOptions) -> anyhow::Result<AsrResult> {
-        let mut guard = self.loaded.lock().unwrap();
+        let mut guard = self.lock_model(opts)?;
         let loaded = guard.as_mut().ok_or_else(|| anyhow::anyhow!("Kein Modell geladen"))?;
         let mut run = RunOptions::default();
         if let Some(lang) = &opts.language {
@@ -223,9 +243,7 @@ impl Asr {
         progress: &mut dyn FnMut(f32),
     ) -> anyhow::Result<Vec<TimedText>> {
         let max_ms = self
-            .loaded
-            .lock()
-            .unwrap()
+            .lock_model(opts)?
             .as_ref()
             .map(|l| l.max_audio_ms)
             .unwrap_or(30_000);

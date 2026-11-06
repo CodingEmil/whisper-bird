@@ -178,13 +178,14 @@ pub fn popup_context_menu() {
         let build = || -> tauri::Result<Menu<Wry>> {
             let ptt = CheckMenuItem::with_id(&app, "ptt", t(lang, "tray_ptt"), true, s.activation == Activation::PushToTalk, None::<&str>)?;
             let enhance = CheckMenuItem::with_id(&app, "enhance", t(lang, "tray_enhance"), true, s.enhance_mode == EnhanceMode::Always, None::<&str>)?;
-            let file = MenuItem::with_id(&app, "file", t(lang, "tray_file"), true, None::<&str>)?;
+            let meeting_label = if st.meeting.is_active() { t(lang, "tray_meeting_stop") } else { t(lang, "tray_meeting_transcribe") };
+            let meeting = MenuItem::with_id(&app, "meeting", meeting_label, true, None::<&str>)?;
             let hide = MenuItem::with_id(&app, "hide_icon", t(lang, "tray_hide_icon"), true, None::<&str>)?;
             let settings = MenuItem::with_id(&app, "settings", t(lang, "tray_settings"), true, None::<&str>)?;
             let sep = || PredefinedMenuItem::separator(&app);
             Menu::with_items(
                 &app,
-                &[&language_menu(&app)?, &mic_menu(&app)?, &ptt, &enhance, &sep()?, &file, &hide, &sep()?, &settings],
+                &[&language_menu(&app)?, &mic_menu(&app)?, &ptt, &enhance, &sep()?, &meeting, &hide, &sep()?, &settings],
             )
         };
         if let (Some(w), Ok(menu)) = (app.get_webview_window(crate::overlay::LABEL), build()) {

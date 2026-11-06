@@ -36,6 +36,10 @@ pub struct FileJobs {
 }
 
 impl FileJobs {
+    pub fn is_running(&self) -> bool {
+        self.running.load(Ordering::SeqCst)
+    }
+
     pub fn list(&self) -> Vec<FileJob> {
         self.jobs.lock().unwrap().clone()
     }
@@ -171,6 +175,7 @@ fn worker() {
         }
     }
     st.files.running.store(false, Ordering::SeqCst);
+    st.restore_dictation_model();
     if overlay::current() == OverlayPhase::Files {
         overlay::set(OverlayPhase::Done, None, false, None);
         std::thread::sleep(std::time::Duration::from_millis(900));
@@ -208,7 +213,7 @@ fn transcribe_one(id: u64, path: &Path, token: &CancelToken, flag: &AtomicBool) 
     let duration_ms = pcm.len() as i64 / 16;
 
     st.files.update(id, |j| j.status = "transcribing");
-    let model_id = st.load_asr()?;
+    let model = st.long_asr_model()?;
     st.load_vad()?;
     let language = (s.language != "auto").then(|| s.language.clone());
     let mut last = 0.0f32;
@@ -218,6 +223,7 @@ fn transcribe_one(id: u64, path: &Path, token: &CancelToken, flag: &AtomicBool) 
             language,
             vocabulary: &s.custom_words,
             cancel: Some(token),
+            model: Some(&model),
         },
         &mut |p| {
             if p - last >= 0.01 {
@@ -260,7 +266,7 @@ fn transcribe_one(id: u64, path: &Path, token: &CancelToken, flag: &AtomicBool) 
             app: name,
             language: s.language.ne("auto").then(|| s.language.clone()),
             duration_ms,
-            model: model_id,
+            model: model.id,
         },
         s.history_limit,
     ) {

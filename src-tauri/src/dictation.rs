@@ -333,6 +333,7 @@ fn process(
             language: language.clone(),
             vocabulary: &s.custom_words,
             cancel: Some(cancel),
+            model: None,
         },
     );
     if cancelled(cancel) {

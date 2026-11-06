@@ -682,6 +682,48 @@ html {
   background: var(--color-paper-2);
   color: var(--color-ink);
 }
+/* Aufgeklappte Liste im Stil der App. Wo die WebView das nicht kann (macOS), bleibt die Systemliste. */
+@supports (appearance: base-select) {
+  .select,
+  .select::picker(select) {
+    appearance: base-select;
+  }
+  .select {
+    display: inline-flex;
+    align-items: center;
+  }
+  .select::picker-icon,
+  .select option::checkmark {
+    display: none;
+  }
+  .select::picker(select) {
+    margin-block: var(--space-2xs);
+    padding: var(--space-2xs);
+    border: 1px solid var(--color-edge);
+    border-radius: var(--radius-input);
+    background: var(--color-paper-2);
+    scrollbar-color: var(--color-paper-4) transparent;
+  }
+  .select option {
+    display: flex;
+    align-items: center;
+    min-height: var(--control-s);
+    padding: 0 var(--space-xs);
+    border-radius: var(--radius-key);
+    background: transparent;
+    cursor: pointer;
+    outline-offset: -2px;
+  }
+  .select option:hover {
+    background: var(--color-paper-3);
+  }
+  .select option:focus-visible {
+    outline: 2px solid var(--color-focus);
+  }
+  .select option:checked {
+    background: var(--color-accent-wash);
+  }
+}
 .select-wrap > .lucide {
   position: absolute;
   right: var(--space-sm);

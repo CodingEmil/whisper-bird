@@ -143,6 +143,7 @@ export default function Models() {
   }, []);
 
   const byKind = (k: ModelKind[]) => models.filter((m) => k.includes(m.kind));
+  const installed = byKind(["asr"]).filter((m) => m.installed).map((m): [string, string] => [m.id, m.name]);
 
   return (
     <>
@@ -151,16 +152,24 @@ export default function Models() {
       </header>
       <p className="page-sub">{t("models.subtitle")}</p>
 
+      {installed.length > 0 && (
+        <Card title={t("models.usage")}>
+          <Row label={t("models.usage_dictation")} hint={t("models.usage_dictation_hint")}>
+            <Select value={s.asr_model} options={installed} onChange={(asr_model) => update({ asr_model })} />
+          </Row>
+          <Row label={t("models.usage_meeting")} hint={t("models.usage_meeting_hint")}>
+            <Select
+              value={s.meeting_asr_model}
+              options={[["", t("models.usage_same")], ...installed]}
+              onChange={(meeting_asr_model) => update({ meeting_asr_model })}
+            />
+          </Row>
+        </Card>
+      )}
+
       <Card title={t("models.asr")}>
         {byKind(["asr"]).map((m) => (
-          <ModelRow
-            key={m.id}
-            model={m}
-            progress={progress[m.id]}
-            selected={s.asr_model === m.id}
-            onSelect={() => update({ asr_model: m.id })}
-            onChanged={refresh}
-          />
+          <ModelRow key={m.id} model={m} progress={progress[m.id]} onChanged={refresh} />
         ))}
       </Card>
 

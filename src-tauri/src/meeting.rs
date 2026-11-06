@@ -206,6 +206,7 @@ pub fn start() -> Result<String, String> {
                 let _ = save(&m);
                 emit_update(&m);
             }
+            state().restore_dictation_model();
         })
         .map_err(|e| e.to_string())?;
     Ok(id)
@@ -243,7 +244,8 @@ fn run(mut m: Meeting, stop: &AtomicBool) -> Result<(), Failure> {
             }
         };
     }
-    tryf!(st.load_asr());
+    let model = tryf!(st.long_asr_model());
+    tryf!(st.asr.ensure_loaded(&model.id, &model.path, model.accel));
     tryf!(st.load_vad());
 
     let use_mic = matches!(m.source, MeetingSource::Microphone | MeetingSource::Both);
@@ -290,6 +292,7 @@ fn run(mut m: Meeting, stop: &AtomicBool) -> Result<(), Failure> {
         language: language.clone(),
         vocabulary: &s.custom_words,
         cancel: None,
+        model: Some(&model),
     };
 
     loop {
@@ -404,7 +407,7 @@ fn run(mut m: Meeting, stop: &AtomicBool) -> Result<(), Failure> {
                 app: m.title.clone(),
                 language: language.clone(),
                 duration_ms: m.duration_ms,
-                model: st.asr.loaded_id().unwrap_or_default(),
+                model: model.id.clone(),
             },
             s.history_limit,
         ) {

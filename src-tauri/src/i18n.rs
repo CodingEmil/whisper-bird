@@ -14,6 +14,7 @@ pub fn t(lang: &str, key: &str) -> String {
         "tray_stop" => if de { "Diktat beenden" } else { "Stop dictation" },
         "tray_meeting_start" => if de { "Meeting aufnehmen" } else { "Record meeting" },
         "tray_meeting_stop" => if de { "Meeting beenden" } else { "Stop meeting" },
+        "tray_meeting_transcribe" => if de { "Meeting transkribieren" } else { "Transcribe meeting" },
         "tray_file" => if de { "Datei transkribieren …" } else { "Transcribe file …" },
         "tray_language" => if de { "Sprache" } else { "Language" },
         "tray_auto" => if de { "Automatisch" } else { "Automatic" },

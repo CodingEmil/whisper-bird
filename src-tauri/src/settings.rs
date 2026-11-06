@@ -151,6 +151,8 @@ pub struct Settings {
     // Meetings & Dateien
     pub meeting_source: MeetingSource,
     pub meeting_auto_notes: bool,
+    /// Spracherkennung für Meetings und Dateien; leer = wie beim Diktat.
+    pub meeting_asr_model: String,
     pub file_output_dir: Option<String>,
 
     // System
@@ -287,6 +289,7 @@ impl Default for Settings {
 
             meeting_source: MeetingSource::Both,
             meeting_auto_notes: false,
+            meeting_asr_model: String::new(),
             file_output_dir: None,
 
             autostart: false,

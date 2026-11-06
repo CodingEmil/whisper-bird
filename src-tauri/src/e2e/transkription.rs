@@ -20,6 +20,7 @@ fn plain(language: Option<&str>) -> AsrOptions<'static> {
         language: language.map(str::to_string),
         vocabulary: &[],
         cancel: None,
+        model: None,
     }
 }
 

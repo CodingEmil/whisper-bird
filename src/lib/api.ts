@@ -25,6 +25,7 @@ export interface Settings {
   ui_language: string;
   onboarding_done: boolean;
   asr_model: string;
+  meeting_asr_model: string;
   language: string;
   activation: Activation;
   shortcut_dictate: string;

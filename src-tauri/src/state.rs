@@ -1,6 +1,6 @@
 //! Globaler App-Zustand.
 
-use crate::asr::Asr;
+use crate::asr::{Asr, AsrModel};
 use crate::catalog::{self, ModelKind};
 use crate::downloads::Downloads;
 use crate::enhance::Enhancer;
@@ -116,6 +116,28 @@ impl AppState {
             .ok_or_else(|| anyhow::anyhow!(crate::i18n::t(&self.settings().ui_language, "no_model")))?;
         self.asr.ensure_loaded(&id, &path, self.settings().accelerator)?;
         Ok(id)
+    }
+
+    /// Modell für Meetings und Dateien: das eigens gewählte, sonst wie beim Diktat.
+    pub fn long_asr_model(&self) -> anyhow::Result<AsrModel> {
+        let s = self.settings();
+        let (id, path) = self
+            .model_file(&s.meeting_asr_model)
+            .filter(|p| p.exists())
+            .map(|p| (s.meeting_asr_model.clone(), p))
+            .or_else(|| self.usable_asr_model())
+            .ok_or_else(|| anyhow::anyhow!(crate::i18n::t(&s.ui_language, "no_model")))?;
+        Ok(AsrModel { id, path, accel: s.accelerator })
+    }
+
+    /// Nach Meeting oder Datei: Das Diktatmodell zurückholen, damit das nächste Diktat schnell startet.
+    pub fn restore_dictation_model(&self) {
+        if self.meeting.is_active() || self.files.is_running() {
+            return;
+        }
+        if let Err(e) = self.load_asr() {
+            log::warn!("Modell konnte nicht geladen werden: {e:#}");
+        }
     }
 
     pub fn load_vad(&self) -> anyhow::Result<()> {
