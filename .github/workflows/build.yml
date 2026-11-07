@@ -1,12 +1,18 @@
 # Baut die Windows-Exe (Installer + portable Zip) und die Mac-App (.dmg, Apple Silicon).
 # - Manuell: Actions → Build → "Run workflow" (oder `gh workflow run build.yml`)
-#   → Ergebnis als Artifacts am Workflow-Lauf.
+#   → Ergebnis als Artifacts am Workflow-Lauf. Mit „release“ zusätzlich ein GitHub Release
+#   samt Tag `v<Version aus tauri.conf.json>` auf dem gebauten Commit (wie beim Tag-Push).
 # - Tag `vX.Y.Z` pushen → zusätzlich GitHub Release mit allen Dateien, sobald beide
 #   Builds grün sind. `vX.Y.Z-beta.N` wird als Vorabversion veröffentlicht.
 name: Build
 
 on:
   workflow_dispatch:
+    inputs:
+      release:
+        description: "Release mit Tag v<Version> anlegen"
+        type: boolean
+        default: false
   push:
     tags: ["v*"]
 
@@ -201,7 +207,7 @@ jobs:
 
   # Erst wenn Windows und Mac gebaut sind: ein Release mit allen Dateien.
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || inputs.release
     needs: [windows, macos]
     runs-on: ubuntu-latest
     steps:
@@ -219,27 +225,39 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           ls -la out
+          # Beim Tag-Push dessen Name, beim manuellen Start die Version aus tauri.conf.json.
+          # Den Tag legt dann `gh release create` auf dem gebauten Commit an.
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            tag="$GITHUB_REF_NAME"
+          else
+            tag="v$(jq -r .version src-tauri/tauri.conf.json)"
+            if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+              echo "::error::Tag $tag gibt es schon, erst die Version erhöhen"
+              exit 1
+            fi
+          fi
           prerelease=()
-          [[ "$GITHUB_REF_NAME" == *-* ]] && prerelease=(--prerelease)
+          [[ "$tag" == *-* ]] && prerelease=(--prerelease)
           # Die Stichpunkte über der Linie zeigt die App nach dem Update als Neuerungen an
           # (updates::release_notes); auf GitHub lassen sie sich nachträglich bearbeiten.
-          prev=$(git describe --tags --abbrev=0 "$GITHUB_REF_NAME^" 2>/dev/null || true)
+          prev=$(git describe --tags --abbrev=0 "$GITHUB_SHA^" 2>/dev/null || true)
           {
             echo "## Neu"
             echo
-            git log --no-merges --max-count=30 --pretty='- %s' "${prev:+$prev..}$GITHUB_REF_NAME"
+            git log --no-merges --max-count=30 --pretty='- %s' "${prev:+$prev..}$GITHUB_SHA"
             echo
             echo "---"
             echo
             echo "**Windows:** Installer (\`*-setup.exe\`) oder portable Zip. Nicht signiert: Windows SmartScreen zeigt beim ersten Start „Unbekannter Herausgeber“ → Weitere Informationen → Trotzdem ausführen."
             echo
-            echo "**macOS** (Apple Silicon, ab macOS 12): \`*_aarch64.dmg\`. Nicht notarisiert: Beim ersten Start einmal unter Systemeinstellungen → Datenschutz & Sicherheit → Trotzdem öffnen freigeben. Schritt für Schritt: [Installation auf dem Mac](https://github.com/$GITHUB_REPOSITORY/blob/$GITHUB_REF_NAME/docs/macos.md)."
+            echo "**macOS** (Apple Silicon, ab macOS 12): \`*_aarch64.dmg\`. Nicht notarisiert: Beim ersten Start einmal unter Systemeinstellungen → Datenschutz & Sicherheit → Trotzdem öffnen freigeben. Schritt für Schritt: [Installation auf dem Mac](https://github.com/$GITHUB_REPOSITORY/blob/$tag/docs/macos.md)."
             if [[ -n "$prev" ]]; then
               echo
-              echo "**Alle Änderungen**: https://github.com/$GITHUB_REPOSITORY/compare/$prev...$GITHUB_REF_NAME"
+              echo "**Alle Änderungen**: https://github.com/$GITHUB_REPOSITORY/compare/$prev...$tag"
             fi
           } > release-notes.md
           cat release-notes.md
-          gh release create "$GITHUB_REF_NAME" out/* "${prerelease[@]}" \
-            --title "Whisper Bird ${GITHUB_REF_NAME#v}" \
+          gh release create "$tag" out/* "${prerelease[@]}" \
+            --target "$GITHUB_SHA" \
+            --title "Whisper Bird ${tag#v}" \
             --notes-file release-notes.md
