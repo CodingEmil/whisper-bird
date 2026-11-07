@@ -85,12 +85,15 @@ für Windows einen Installer (NSIS) und eine portable Zip, für den Mac ein `.dm
 > Whisper Bird braucht einen Vulkan-fähigen Grafiktreiber (`vulkan-1.dll`). Aktuelle Treiber
 > von AMD, NVIDIA und Intel bringen ihn mit.
 
-Updates sucht, lädt und installiert die App selbst.
+Unter Windows sucht, lädt und installiert die App Updates selbst. Auf dem Mac meldet sie eine
+neue Version, das Update machst du [von Hand](docs/macos.md#auf-eine-neue-version-updaten).
 
 ### macOS (Vorschau)
 
 Für Macs mit Apple-Chip ab macOS 12. Die App ist noch nicht notarisiert, beim ersten Start
-blockiert macOS sie deshalb einmal. **Schritt für Schritt: [Installation auf dem Mac](docs/macos.md).**
+blockiert macOS sie deshalb, auch nach jedem Update. **Schritt für Schritt:
+[Installation auf dem Mac](docs/macos.md)**, dort auch [Updates](docs/macos.md#auf-eine-neue-version-updaten)
+und [bekannte Probleme](docs/macos.md#bekannte-probleme).
 
 Noch offen auf dem Mac: Notarisierung (braucht ein Apple-Developer-Konto), Selbst-Update,
 Intel-Macs nur auf der CPU.
