@@ -297,6 +297,9 @@ pub fn run() {
             // Ohne Job-Objekt (nur Windows) liefe der llama-server sonst weiter.
             state().enhancer.llama.stop();
             updates::start_replacement();
+            // Zuletzt, damit die Destruktoren von ggml nicht mehr laufen (siehe dort).
+            #[cfg(target_os = "macos")]
+            platform::macos::skip_static_destructors();
         }
         // Klick aufs Dock-Symbol, während das Fenster versteckt ist.
         #[cfg(target_os = "macos")]
