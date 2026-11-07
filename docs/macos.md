@@ -102,13 +102,13 @@ tccutil reset Accessibility dev.emil.whisper-island
 
 ## Bekannte Probleme
 
-Stand: Version 0.2.1.
+Stand: Version 0.2.2.
 
 | Was passiert | Was du tun kannst |
 |---|---|
-| **Absturzmeldung beim Beenden**, solange ein Spracherkennungsmodell geladen ist. | Meldung schließen und die App bei Bedarf neu starten. Im Test blieben Einstellungen und Verlauf dabei erhalten. Behoben in der nächsten Version nach 0.2.1. |
-| **Overlay springt in die Mitte**, wenn eine Aufnahme startet oder endet oder die App neu startet. Betrifft vor allem Positionen in der rechten oder unteren Bildschirmhälfte auf Retina-Displays. | In 0.2.1 gibt es dafür keine Lösung. Behoben in der nächsten Version nach 0.2.1: Nach dem Update den Vogel einmal neu an die gewünschte Stelle ziehen. |
-| **Menü „Text bearbeiten“ öffnet nicht am Mauszeiger**, sondern dort, wo es zuletzt war. Betrifft Retina-Displays, wenn der Mauszeiger rechts oder unten liegt. | In 0.2.1 gibt es dafür keine Lösung. Behoben in der nächsten Version nach 0.2.1. |
+| **Absturzmeldung beim Beenden**, solange ein Spracherkennungsmodell geladen ist. | Meldung schließen und die App bei Bedarf neu starten. Im Test blieben Einstellungen und Verlauf dabei erhalten. Behoben in 0.2.2, beim Beenden von 0.2.1 für das Update kann sie aber noch ein letztes Mal erscheinen. |
+| **Overlay springt in die Mitte**, wenn eine Aufnahme startet oder endet oder die App neu startet. Betrifft vor allem Positionen in der rechten oder unteren Bildschirmhälfte auf Retina-Displays. | Behoben in 0.2.2. Nach dem Update den Vogel einmal neu an die gewünschte Stelle ziehen. |
+| **Menü „Text bearbeiten“ öffnet nicht am Mauszeiger**, sondern dort, wo es zuletzt war. Betrifft Retina-Displays, wenn der Mauszeiger rechts oder unten liegt. | Behoben in 0.2.2. |
 | **Das erste Diktat einer neuen Version kann verzögert starten.** Das Mikrofon brauchte im Test dabei 5 bis 7 Sekunden, danach nur noch Millisekunden, auch nach einem Neustart der App. | Beim ersten Diktat nach dem Update ein paar Sekunden warten, bevor du sprichst. Fehlt der Anfang, ihn noch einmal sprechen. |
 
 ## Gut zu wissen
