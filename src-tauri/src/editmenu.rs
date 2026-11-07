@@ -10,7 +10,7 @@ use serde::Serialize;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::Duration;
-use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, WebviewUrl, WebviewWindowBuilder, WindowEvent};
+use tauri::{AppHandle, Emitter, Manager, Position, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 
 pub const LABEL: &str = "editmenu";
 const WIDTH: f64 = 600.0;
@@ -215,21 +215,33 @@ fn recapture() {
 }
 
 /// Nahe am Mauszeiger, aber vollständig auf dem Bildschirm.
-fn menu_position(app: &AppHandle) -> Option<PhysicalPosition<i32>> {
-    let cursor = app.cursor_position().ok()?;
-    let monitor = app.monitor_from_point(cursor.x, cursor.y).ok().flatten()?;
-    let scale = monitor.scale_factor();
-    let wa = monitor.work_area();
-    let w = (WIDTH * scale) as i32;
-    let h = (HEIGHT * scale) as i32;
-    let mut x = cursor.x as i32 - w / 2;
-    let mut y = cursor.y as i32 + (16.0 * scale) as i32;
-    if y + h > wa.position.y + wa.size.height as i32 {
-        y = cursor.y as i32 - h - (16.0 * scale) as i32;
+fn menu_position(app: &AppHandle) -> Option<Position> {
+    let (cursor, monitor) = crate::overlay::cursor_on_monitor(app)?;
+    let origin = menu_origin(
+        cursor,
+        crate::overlay::work_area(&monitor),
+        crate::overlay::units(monitor.scale_factor()),
+    );
+    Some(crate::overlay::native_position(origin))
+}
+
+/// Links oben des Menüs: unter dem Mauszeiger, fehlt dort der Platz darüber, und
+/// immer im Arbeitsbereich (x, y, Breite, Höhe). Alles in Bildschirmkoordinaten, `units`
+/// sind deren Einheiten pro logischem Pixel (siehe `overlay::units`).
+fn menu_origin(cursor: (f64, f64), area: (f64, f64, f64, f64), units: f64) -> (f64, f64) {
+    let (ax, ay, aw, ah) = (area.0 as i32, area.1 as i32, area.2 as i32, area.3 as i32);
+    let (cx, cy) = (cursor.0 as i32, cursor.1 as i32);
+    let w = (WIDTH * units) as i32;
+    let h = (HEIGHT * units) as i32;
+    let gap = (16.0 * units) as i32;
+    let mut y = cy + gap;
+    if y + h > ay + ah {
+        y = cy - h - gap;
     }
-    x = x.clamp(wa.position.x, wa.position.x + wa.size.width as i32 - w);
-    y = y.clamp(wa.position.y, wa.position.y + wa.size.height as i32 - h);
-    Some(PhysicalPosition::new(x, y))
+    // Ist der Arbeitsbereich kleiner als das Menü, gilt die Ecke links oben.
+    let x = (cx - w / 2).clamp(ax, (ax + aw - w).max(ax));
+    let y = y.clamp(ay, (ay + ah - h).max(ay));
+    (x as f64, y as f64)
 }
 
 /// Windows erlaubt Hintergrundprozessen das Fokussieren nur eingeschränkt;
@@ -348,4 +360,45 @@ pub fn apply(text: String) -> Result<(), String> {
         }
     });
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Retina-Display 1470 x 956 Punkte, Arbeitsbereich ohne Menüleiste und Dock.
+    const MAC: (f64, f64, f64, f64) = (0.0, 33.0, 1470.0, 866.0);
+
+    #[test]
+    fn menue_liegt_unter_dem_mauszeiger() {
+        assert_eq!(menu_origin((800.0, 200.0), MAC, 1.0), (500.0, 216.0));
+    }
+
+    #[test]
+    fn menue_klappt_unten_ueber_den_mauszeiger() {
+        assert_eq!(menu_origin((800.0, 800.0), MAC, 1.0), (500.0, 314.0));
+    }
+
+    #[test]
+    fn menue_bleibt_in_den_ecken_im_arbeitsbereich() {
+        assert_eq!(menu_origin((1465.0, 950.0), MAC, 1.0), (870.0, 429.0));
+        assert_eq!(menu_origin((5.0, 5.0), MAC, 1.0), (0.0, 33.0));
+    }
+
+    #[test]
+    fn windows_rechnet_in_physischen_pixeln() {
+        // 150 %: Menü 900 x 705, Abstand 24.
+        let area = (0.0, 0.0, 2560.0, 1400.0);
+        assert_eq!(menu_origin((1000.0, 300.0), area, 1.5), (550.0, 324.0));
+        assert_eq!(menu_origin((1000.0, 1000.0), area, 1.5), (550.0, 271.0));
+        assert_eq!(menu_origin((2500.0, 1390.0), area, 1.5), (1660.0, 661.0));
+        // Zweiter Monitor links vom Hauptmonitor.
+        let left = (-1920.0, 0.0, 1920.0, 1040.0);
+        assert_eq!(menu_origin((-1900.0, 100.0), left, 1.0), (-1920.0, 116.0));
+    }
+
+    #[test]
+    fn zu_kleiner_arbeitsbereich_gilt_ab_links_oben() {
+        assert_eq!(menu_origin((100.0, 100.0), (10.0, 20.0, 400.0, 300.0), 1.0), (10.0, 20.0));
+    }
 }
