@@ -53,7 +53,7 @@ static DRAGGED: Mutex<Option<(f64, f64)>> = Mutex::new(None);
 /// Position in der rechten oder unteren Hälfte scheinbar außerhalb des Bildschirms.
 ///
 /// Liefert die Einheiten pro logischem Pixel bei gegebenem Monitor-Faktor.
-fn units(scale: f64) -> f64 {
+pub(crate) fn units(scale: f64) -> f64 {
     if cfg!(target_os = "macos") {
         1.0
     } else {
@@ -71,7 +71,7 @@ fn from_physical(value: f64, scale: f64) -> f64 {
 }
 
 /// Arbeitsbereich des Monitors in Bildschirmkoordinaten: x, y, Breite, Höhe.
-fn work_area(m: &Monitor) -> (f64, f64, f64, f64) {
+pub(crate) fn work_area(m: &Monitor) -> (f64, f64, f64, f64) {
     let s = m.scale_factor();
     let wa = m.work_area();
     (
@@ -80,6 +80,27 @@ fn work_area(m: &Monitor) -> (f64, f64, f64, f64) {
         from_physical(wa.size.width as f64, s),
         from_physical(wa.size.height as f64, s),
     )
+}
+
+/// Mauszeiger in Bildschirmkoordinaten und der Monitor darunter.
+pub(crate) fn cursor_on_monitor(app: &AppHandle) -> Option<((f64, f64), Monitor)> {
+    let c = app.cursor_position().ok()?;
+    // Den Mauszeiger meldet tauri mit dem Faktor des Hauptmonitors umgerechnet.
+    let primary_scale = app.primary_monitor().ok().flatten().map(|m| m.scale_factor()).unwrap_or(1.0);
+    let (x, y) = (from_physical(c.x, primary_scale), from_physical(c.y, primary_scale));
+    let monitor = app.monitor_from_point(x, y).ok().flatten()?;
+    Some(((x, y), monitor))
+}
+
+/// Bildschirmkoordinaten als Fensterposition für `set_position`. Unter macOS als
+/// Punkte, sonst rechnete tao sie mit dem Faktor des Monitors um, auf dem das
+/// Fenster gerade liegt.
+pub(crate) fn native_position(pos: (f64, f64)) -> Position {
+    if cfg!(target_os = "macos") {
+        LogicalPosition::new(pos.0, pos.1).into()
+    } else {
+        PhysicalPosition::new(pos.0 as i32, pos.1 as i32).into()
+    }
 }
 
 /// Fensterposition (links oben) aus Mitte und Größe; waagerecht bleibt das
@@ -284,27 +305,14 @@ fn place(
     // Erst nach set_size merken (ein Move-Event davon trägt noch die alte
     // Position) und vor set_position (dessen Event muss als eigenes gelten).
     *PLACED.lock().unwrap() = Some((pos, center));
-    let native: Position = if cfg!(target_os = "macos") {
-        LogicalPosition::new(pos.0, pos.1).into()
-    } else {
-        PhysicalPosition::new(pos.0 as i32, pos.1 as i32).into()
-    };
-    let _ = w.set_position(native);
+    let _ = w.set_position(native_position(pos));
 }
 
 /// Mitte der Pille oben bzw. unten mittig auf dem Monitor mit dem Mauszeiger.
 fn anchor_center(app: &AppHandle, anchor: OverlayPosition, lh: f64) -> Option<(f64, f64)> {
-    let primary = app.primary_monitor().ok().flatten();
-    // Den Mauszeiger meldet tauri mit dem Faktor des Hauptmonitors umgerechnet.
-    let primary_scale = primary.as_ref().map(|m| m.scale_factor()).unwrap_or(1.0);
-    let m = app
-        .cursor_position()
-        .ok()
-        .and_then(|c| {
-            let (x, y) = (from_physical(c.x, primary_scale), from_physical(c.y, primary_scale));
-            app.monitor_from_point(x, y).ok().flatten()
-        })
-        .or(primary)?;
+    let m = cursor_on_monitor(app)
+        .map(|(_, m)| m)
+        .or_else(|| app.primary_monitor().ok().flatten())?;
     let scale = units(m.scale_factor());
     let (ax, ay, aw, ah) = work_area(&m);
     let offset = 14.0 * scale + lh * scale / 2.0;
