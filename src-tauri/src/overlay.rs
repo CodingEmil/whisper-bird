@@ -7,8 +7,8 @@ use crate::state::state;
 use serde::Serialize;
 use std::sync::Mutex;
 use tauri::{
-    AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, PhysicalSize, WebviewUrl,
-    WebviewWindow, WebviewWindowBuilder, WindowEvent,
+    AppHandle, Emitter, LogicalPosition, LogicalSize, Manager, Monitor, PhysicalPosition,
+    Position, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent,
 };
 
 pub const LABEL: &str = "overlay";
@@ -39,12 +39,61 @@ static CURRENT: Mutex<Phase> = Mutex::new(Phase::Idle);
 
 /// Zuletzt von uns gesetzte Fensterposition und die Mitte, aus der sie
 /// berechnet wurde. Weicht die echte Position davon ab, hat der Nutzer gezogen.
-static PLACED: Mutex<Option<(PhysicalPosition<i32>, (f64, f64))>> = Mutex::new(None);
+static PLACED: Mutex<Option<((f64, f64), (f64, f64))>> = Mutex::new(None);
 
 /// Vom Nutzer gezogene Mitte – gilt sofort für Icon und Pille, auch bevor sie
 /// verzögert in den Einstellungen landet. Ohne Floating Icon nur bis zum Ende
 /// der laufenden Aufnahme.
 static DRAGGED: Mutex<Option<(f64, f64)>> = Mutex::new(None);
+
+/// Alle Positionen hier (auch `floating_pos`) sind Bildschirmkoordinaten des
+/// Systems, in denen auch `monitor_from_point` rechnet: unter Windows physische
+/// Pixel, unter macOS Punkte. Physische Pixel wären dort nicht eindeutig (jeder
+/// Monitor hat seinen eigenen Faktor), und auf einem Retina-Display läge jede
+/// Position in der rechten oder unteren Hälfte scheinbar außerhalb des Bildschirms.
+///
+/// Liefert die Einheiten pro logischem Pixel bei gegebenem Monitor-Faktor.
+fn units(scale: f64) -> f64 {
+    if cfg!(target_os = "macos") {
+        1.0
+    } else {
+        scale
+    }
+}
+
+/// Umrechnung eines physischen Werts von tauri in Bildschirmkoordinaten.
+fn from_physical(value: f64, scale: f64) -> f64 {
+    if cfg!(target_os = "macos") {
+        value / scale
+    } else {
+        value
+    }
+}
+
+/// Arbeitsbereich des Monitors in Bildschirmkoordinaten: x, y, Breite, Höhe.
+fn work_area(m: &Monitor) -> (f64, f64, f64, f64) {
+    let s = m.scale_factor();
+    let wa = m.work_area();
+    (
+        from_physical(wa.position.x as f64, s),
+        from_physical(wa.position.y as f64, s),
+        from_physical(wa.size.width as f64, s),
+        from_physical(wa.size.height as f64, s),
+    )
+}
+
+/// Fensterposition (links oben) aus Mitte und Größe; waagerecht bleibt das
+/// Fenster im Arbeitsbereich, die Mitte selbst bleibt davon unberührt.
+fn window_origin(center: (f64, f64), size: (f64, f64), area: Option<(f64, f64, f64, f64)>) -> (f64, f64) {
+    let (w, h) = (size.0 as i32, size.1 as i32);
+    let mut x = center.0 as i32 - w / 2;
+    let y = center.1 as i32 - h / 2;
+    if let Some((ax, _, aw, _)) = area {
+        let min_x = ax as i32;
+        x = x.clamp(min_x, (min_x + aw as i32 - w).max(min_x));
+    }
+    (x as f64, y as f64)
+}
 
 fn logical_size(phase: Phase) -> (f64, f64) {
     match phase {
@@ -106,15 +155,14 @@ static PENDING_CENTER: Mutex<Option<((f64, f64), std::time::Instant)>> = Mutex::
 /// statt aus dem Event, damit sie exakt mit `set_position` vergleichbar ist.
 fn on_moved(w: &WebviewWindow) {
     let Ok(pos) = w.outer_position() else { return };
+    let Ok(scale) = w.scale_factor() else { return };
+    let pos = (from_physical(pos.x as f64, scale), from_physical(pos.y as f64, scale));
     let mut placed = PLACED.lock().unwrap();
     let Some((at, center)) = *placed else { return };
-    if pos == at {
+    if (pos.0 - at.0).abs() < 0.5 && (pos.1 - at.1).abs() < 0.5 {
         return; // eigenes set_position
     }
-    let center = (
-        center.0 + (pos.x - at.x) as f64,
-        center.1 + (pos.y - at.y) as f64,
-    );
+    let center = (center.0 + pos.0 - at.0, center.1 + pos.1 - at.1);
     *placed = Some((pos, center));
     drop(placed);
     *DRAGGED.lock().unwrap() = Some(center);
@@ -230,37 +278,40 @@ fn place(
         .ok()
         .flatten()
         .or_else(|| app.primary_monitor().ok().flatten());
-    let scale = monitor.as_ref().map(|m| m.scale_factor()).unwrap_or(1.0);
-    let size = PhysicalSize::new((lw * scale) as i32, (lh * scale) as i32);
-    let mut x = center.0 as i32 - size.width / 2;
-    let y = center.1 as i32 - size.height / 2;
-    if let Some(m) = monitor {
-        let wa = m.work_area();
-        let max_x = wa.position.x + wa.size.width as i32 - size.width;
-        x = x.clamp(wa.position.x, max_x.max(wa.position.x));
-    }
-    let pos = PhysicalPosition::new(x, y);
+    let scale = units(monitor.as_ref().map(|m| m.scale_factor()).unwrap_or(1.0));
+    let pos = window_origin(center, (lw * scale, lh * scale), monitor.as_ref().map(work_area));
     let _ = w.set_size(LogicalSize::new(lw, lh));
     // Erst nach set_size merken (ein Move-Event davon trägt noch die alte
     // Position) und vor set_position (dessen Event muss als eigenes gelten).
     *PLACED.lock().unwrap() = Some((pos, center));
-    let _ = w.set_position(pos);
+    let native: Position = if cfg!(target_os = "macos") {
+        LogicalPosition::new(pos.0, pos.1).into()
+    } else {
+        PhysicalPosition::new(pos.0 as i32, pos.1 as i32).into()
+    };
+    let _ = w.set_position(native);
 }
 
 /// Mitte der Pille oben bzw. unten mittig auf dem Monitor mit dem Mauszeiger.
 fn anchor_center(app: &AppHandle, anchor: OverlayPosition, lh: f64) -> Option<(f64, f64)> {
+    let primary = app.primary_monitor().ok().flatten();
+    // Den Mauszeiger meldet tauri mit dem Faktor des Hauptmonitors umgerechnet.
+    let primary_scale = primary.as_ref().map(|m| m.scale_factor()).unwrap_or(1.0);
     let m = app
         .cursor_position()
         .ok()
-        .and_then(|c| app.monitor_from_point(c.x, c.y).ok().flatten())
-        .or_else(|| app.primary_monitor().ok().flatten())?;
-    let scale = m.scale_factor();
-    let wa = m.work_area();
+        .and_then(|c| {
+            let (x, y) = (from_physical(c.x, primary_scale), from_physical(c.y, primary_scale));
+            app.monitor_from_point(x, y).ok().flatten()
+        })
+        .or(primary)?;
+    let scale = units(m.scale_factor());
+    let (ax, ay, aw, ah) = work_area(&m);
     let offset = 14.0 * scale + lh * scale / 2.0;
-    let x = wa.position.x as f64 + wa.size.width as f64 / 2.0;
+    let x = ax + aw / 2.0;
     let y = match anchor {
-        OverlayPosition::TopCenter => wa.position.y as f64 + offset,
-        OverlayPosition::BottomCenter => wa.position.y as f64 + wa.size.height as f64 - offset,
+        OverlayPosition::TopCenter => ay + offset,
+        OverlayPosition::BottomCenter => ay + ah - offset,
     };
     Some((x, y))
 }
@@ -268,12 +319,8 @@ fn anchor_center(app: &AppHandle, anchor: OverlayPosition, lh: f64) -> Option<(f
 fn default_center(app: &AppHandle) -> (f64, f64) {
     match app.primary_monitor().ok().flatten() {
         Some(m) => {
-            let wa = m.work_area();
-            let s = m.scale_factor();
-            (
-                wa.position.x as f64 + wa.size.width as f64 / 2.0,
-                wa.position.y as f64 + wa.size.height as f64 - 140.0 * s,
-            )
+            let (ax, ay, aw, ah) = work_area(&m);
+            (ax + aw / 2.0, ay + ah - 140.0 * units(m.scale_factor()))
         }
         None => (1200.0, 700.0),
     }
@@ -307,4 +354,40 @@ fn show_no_activate(w: &WebviewWindow) {
         }
     }
     let _ = w.show();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn koordinaten_passen_zur_plattform() {
+        // Retina (Faktor 2): macOS rechnet in Punkten, Windows in physischen Pixeln.
+        let expected = if cfg!(target_os = "macos") { 829.0 } else { 1658.0 };
+        assert_eq!(from_physical(1658.0, 2.0), expected);
+        assert_eq!(units(2.0), if cfg!(target_os = "macos") { 1.0 } else { 2.0 });
+        // Windows bleibt auch bei krummem Faktor exakt.
+        if !cfg!(target_os = "macos") {
+            assert_eq!(from_physical(1234.0, 1.1), 1234.0);
+        }
+    }
+
+    #[test]
+    fn fenster_liegt_um_die_mitte() {
+        let area = Some((0.0, 25.0, 1280.0, 760.0));
+        assert_eq!(window_origin((900.0, 600.0), (64.0, 64.0), area), (868.0, 568.0));
+        assert_eq!(window_origin((900.0, 600.0), (280.0, 64.0), area), (760.0, 568.0));
+    }
+
+    #[test]
+    fn pille_bleibt_waagerecht_im_arbeitsbereich() {
+        let area = Some((0.0, 25.0, 1280.0, 760.0));
+        assert_eq!(window_origin((1250.0, 600.0), (280.0, 64.0), area).0, 1000.0);
+        assert_eq!(window_origin((30.0, 600.0), (280.0, 64.0), area).0, 0.0);
+        // Zweiter Monitor links vom Hauptmonitor.
+        let left = Some((-1920.0, 0.0, 1920.0, 1080.0));
+        assert_eq!(window_origin((-1900.0, 600.0), (280.0, 64.0), left).0, -1920.0);
+        // Ohne Monitor keine Begrenzung.
+        assert_eq!(window_origin((5000.0, 600.0), (280.0, 64.0), None).0, 4860.0);
+    }
 }
