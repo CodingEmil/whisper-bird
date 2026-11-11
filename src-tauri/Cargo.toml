@@ -1,6 +1,6 @@
 [package]
 name = "whisper-island"
-version = "0.2.2"
+version = "0.2.3"
 description = "Whisper Bird – lokales Diktieren, Verbessern und Transkribieren für Windows und macOS"
 authors = ["Emil"]
 edition = "2021"
@@ -27,7 +27,7 @@ serde_json = "1"
 anyhow = "1"
 log = "0.4"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "process", "time", "sync", "fs", "io-util"] }
-reqwest = { version = "0.12", features = ["json", "stream"] }
+reqwest = { version = "0.12", features = ["json", "stream", "blocking", "multipart"] }
 futures-util = "0.3"
 sha2 = "0.10"
 hex = "0.4"

@@ -25,6 +25,9 @@ export interface Settings {
   ui_language: string;
   onboarding_done: boolean;
   asr_model: string;
+  asr_remote_url: string;
+  asr_remote_key: string;
+  asr_remote_model: string;
   meeting_asr_model: string;
   language: string;
   activation: Activation;
@@ -267,6 +270,8 @@ export const api = {
   resetStats: () => invoke<void>("reset_stats"),
   copyText: (text: string) => invoke<void>("copy_text", { text }),
   enhanceTest: () => invoke<string>("enhance_test"),
+  asrRemoteTest: (baseUrl: string, apiKey: string, model: string) =>
+    invoke<string>("asr_remote_test", { baseUrl, apiKey, model }),
   enhanceStopLocal: () => invoke<void>("enhance_stop_local"),
   editmenuRun: (instruction: string) => invoke<string>("editmenu_run", { instruction }),
   editmenuApply: (text: string) => invoke<void>("editmenu_apply", { text }),

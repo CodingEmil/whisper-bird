@@ -196,6 +196,7 @@ pub fn run() {
             commands::reset_stats,
             commands::copy_text,
             commands::enhance_test,
+            commands::asr_remote_test,
             commands::enhance_stop_local,
             commands::editmenu_run,
             commands::editmenu_apply,

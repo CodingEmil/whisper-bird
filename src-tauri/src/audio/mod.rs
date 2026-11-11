@@ -21,16 +21,23 @@ pub fn level(samples: &[f32]) -> f32 {
 
 /// Schreibt 16-kHz-Mono-Audio als WAV (für Meetings und Debug).
 pub fn write_wav(path: &std::path::Path, samples: &[f32]) -> anyhow::Result<()> {
+    std::fs::write(path, wav_bytes(samples)?)?;
+    Ok(())
+}
+
+/// 16-bit-Mono-WAV im Speicher.
+pub fn wav_bytes(samples: &[f32]) -> anyhow::Result<Vec<u8>> {
+    let mut out = std::io::Cursor::new(Vec::new());
     let spec = hound::WavSpec {
         channels: 1,
         sample_rate: SAMPLE_RATE,
         bits_per_sample: 16,
         sample_format: hound::SampleFormat::Int,
     };
-    let mut writer = hound::WavWriter::create(path, spec)?;
+    let mut writer = hound::WavWriter::new(&mut out, spec)?;
     for &s in samples {
         writer.write_sample((s.clamp(-1.0, 1.0) * i16::MAX as f32) as i16)?;
     }
     writer.finalize()?;
-    Ok(())
+    Ok(out.into_inner())
 }

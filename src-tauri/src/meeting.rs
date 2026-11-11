@@ -245,7 +245,7 @@ fn run(mut m: Meeting, stop: &AtomicBool) -> Result<(), Failure> {
         };
     }
     let model = tryf!(st.long_asr_model());
-    tryf!(st.asr.ensure_loaded(&model.id, &model.path, model.accel));
+    tryf!(st.asr.ensure_loaded(&model));
     tryf!(st.load_vad());
 
     let use_mic = matches!(m.source, MeetingSource::Microphone | MeetingSource::Both);
@@ -407,7 +407,7 @@ fn run(mut m: Meeting, stop: &AtomicBool) -> Result<(), Failure> {
                 app: m.title.clone(),
                 language: language.clone(),
                 duration_ms: m.duration_ms,
-                model: model.id.clone(),
+                model: model.label(),
             },
             s.history_limit,
         ) {

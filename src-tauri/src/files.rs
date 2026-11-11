@@ -266,7 +266,7 @@ fn transcribe_one(id: u64, path: &Path, token: &CancelToken, flag: &AtomicBool) 
             app: name,
             language: s.language.ne("auto").then(|| s.language.clone()),
             duration_ms,
-            model: model.id,
+            model: model.label(),
         },
         s.history_limit,
     ) {

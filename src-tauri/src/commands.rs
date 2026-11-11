@@ -56,7 +56,12 @@ pub fn set_settings(app: AppHandle, patch: serde_json::Value) -> CmdResult<Setti
     {
         shortcut_errors = st.hotkeys.apply();
     }
-    if old.asr_model != new.asr_model || old.accelerator != new.accelerator {
+    if old.asr_model != new.asr_model
+        || old.accelerator != new.accelerator
+        || old.asr_remote_url != new.asr_remote_url
+        || old.asr_remote_key != new.asr_remote_key
+        || old.asr_remote_model != new.asr_remote_model
+    {
         st.asr.unload();
         std::thread::spawn(|| {
             if let Err(e) = state().load_asr() {
@@ -369,6 +374,20 @@ pub fn reset_stats() -> CmdResult<()> {
 #[tauri::command]
 pub fn copy_text(text: String) -> CmdResult<()> {
     crate::platform::clipboard::set_text(&text, false).map_err(err)
+}
+
+/// Schickt eine Sekunde Stille an die Remote-Spracherkennung, mit den Werten aus dem Formular.
+#[tauri::command]
+pub async fn asr_remote_test(base_url: String, api_key: String, model: String) -> CmdResult<String> {
+    let remote = crate::asr::Remote { base_url, api_key, model };
+    // Blockierender HTTP-Client: nicht auf dem Async-Runtime-Thread ausführen.
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        crate::asr::transcribe_remote(&remote, &[0.0; 16_000], None, &[])
+    })
+    .await
+    .map_err(err)?
+    .map_err(err)?;
+    Ok(result.text)
 }
 
 // ---------- Enhance ----------

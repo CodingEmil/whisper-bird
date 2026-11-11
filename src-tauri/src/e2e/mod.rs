@@ -192,7 +192,8 @@ pub fn asr() -> &'static Asr {
     ASR.get_or_init(|| {
         let id = asr_id();
         let asr = Asr::default();
-        asr.ensure_loaded(&id, &model(&id), Accelerator::Auto).expect("Spracherkennung lädt nicht");
+        let m = crate::asr::AsrModel { path: model(&id), id, accel: Accelerator::Auto, remote: None };
+        asr.ensure_loaded(&m).expect("Spracherkennung lädt nicht");
         asr.ensure_vad(&model(catalog::VAD_MODEL)).expect("VAD lädt nicht");
         asr
     })

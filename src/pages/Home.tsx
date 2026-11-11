@@ -35,7 +35,8 @@ export default function Home({ navigate }: { navigate: (p: PageId) => void }) {
   useEvent("history-added", refresh);
 
   const asr = models.find((m) => m.id === settings.asr_model);
-  const anyAsr = models.some((m) => m.kind === "asr" && m.installed);
+  const remote = settings.asr_model === "remote" && settings.asr_remote_url !== "";
+  const anyAsr = remote || models.some((m) => m.kind === "asr" && m.installed);
   const savedMin = stats ? Math.max(0, stats.words / 40 - stats.duration_ms / 60000) : 0;
   const enhanceLabel =
     settings.enhance_mode === "off"
@@ -92,8 +93,8 @@ export default function Home({ navigate }: { navigate: (p: PageId) => void }) {
             <div className="row-text">
               <div className="row-label">{t("home.model")}</div>
               <div className="row-hint hstack wrap">
-                {asr?.installed ? asr.name : t("home.no_model")}
-                {loaded && asr?.id === loaded && <span className="badge success">{t("common.active")}</span>}
+                {remote ? `Remote (${settings.asr_remote_model})` : asr?.installed ? asr.name : t("home.no_model")}
+                {loaded && (remote ? "remote" : asr?.id) === loaded && <span className="badge success">{t("common.active")}</span>}
               </div>
             </div>
             <button type="button" className="btn ghost icon" aria-label={t("nav.models")} onClick={() => navigate("models")}>

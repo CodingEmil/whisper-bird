@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, Download, LoaderCircle, Trash2, X } from "lucide-react";
+import { Check, Download, FlaskConical, LoaderCircle, Trash2, X } from "lucide-react";
 import { api, formatBytes, type DownloadProgress, type ModelKind, type ModelStatus } from "../lib/api";
 import { Card, Dots, Progress, Row, Select, useApp, useEvent } from "../lib/app";
 import { useConfirm } from "../lib/confirm";
@@ -133,17 +133,138 @@ export function ModelRow({
   );
 }
 
+/** OpenAI-kompatible Spracherkennung: ausfüllen, speichern, dann eingeklappt. */
+function RemoteAsr() {
+  const { t, settings: s, update } = useApp();
+  const [editing, setEditing] = useState(!s.asr_remote_url);
+  const saved = () => ({ url: s.asr_remote_url ?? "", key: s.asr_remote_key ?? "", model: s.asr_remote_model ?? "" });
+  const [form, setForm] = useState(saved);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null);
+  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [k]: e.target.value });
+  const trimmed = { url: form.url.trim(), key: form.key.trim(), model: form.model.trim() || "whisper-1" };
+
+  const startEdit = () => {
+    setForm(saved());
+    setTestResult(null);
+    setEditing(true);
+  };
+  const saveForm = async () => {
+    await update({ asr_remote_url: trimmed.url, asr_remote_key: trimmed.key, asr_remote_model: trimmed.model });
+    setTestResult(null);
+    setEditing(false);
+  };
+  const runTest = async () => {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      setTestResult({ ok: true, text: await api.asrRemoteTest(trimmed.url, trimmed.key, trimmed.model) });
+    } catch (e) {
+      setTestResult({ ok: false, text: String(e) });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  if (!editing) {
+    return (
+      <Card title={t("models.remote")} sub={t("models.remote_hint")}>
+        <Row label={<span className="mono">{s.asr_remote_url}</span>} hint={s.asr_remote_model}>
+          <span className="badge success">
+            <Check size={12} /> {t("models.remote_saved")}
+          </span>
+          <button type="button" className="btn small" onClick={startEdit}>
+            {t("common.change")}
+          </button>
+          <button
+            type="button"
+            className="btn ghost icon danger"
+            title={t("common.remove")}
+            aria-label={t("common.remove")}
+            onClick={() => {
+              update({ asr_remote_url: "", asr_remote_key: "" });
+              setForm({ url: "", key: "", model: s.asr_remote_model });
+              setEditing(true);
+            }}
+          >
+            <Trash2 size={15} />
+          </button>
+        </Row>
+      </Card>
+    );
+  }
+
+  return (
+    <Card title={t("models.remote")} sub={t("models.remote_hint")}>
+      <Row label={t("enh.base_url")} stack>
+        <input
+          className="input wide mono"
+          type="text"
+          placeholder="https://api.openai.com/v1"
+          aria-label={t("enh.base_url")}
+          value={form.url}
+          onChange={set("url")}
+        />
+      </Row>
+      <Row label={t("enh.api_key")} stack>
+        <input
+          className="input wide mono"
+          type="password"
+          autoComplete="off"
+          aria-label={t("enh.api_key")}
+          value={form.key}
+          onChange={set("key")}
+        />
+      </Row>
+      <Row label={t("enh.api_model")} stack>
+        <input
+          className="input wide mono"
+          type="text"
+          placeholder="whisper-1"
+          aria-label={t("enh.api_model")}
+          value={form.model}
+          onChange={set("model")}
+        />
+      </Row>
+      <Row label="">
+        <button type="button" className="btn" disabled={testing || !trimmed.url} aria-busy={testing} onClick={runTest}>
+          {testing ? <LoaderCircle size={15} className="spin" /> : <FlaskConical size={15} />}
+          {testing ? t("enh.test_running") : t("common.test")}
+        </button>
+        {s.asr_remote_url && (
+          <button type="button" className="btn" onClick={() => setEditing(false)}>
+            {t("common.cancel")}
+          </button>
+        )}
+        <button type="button" className="btn primary" disabled={!trimmed.url} onClick={saveForm}>
+          {t("common.save")}
+        </button>
+      </Row>
+      {testResult && (
+        <div className="card-inset">
+          <div className={`notice ${testResult.ok ? "success" : "danger"}`}>
+            <div className="selectable pre">
+              {testResult.ok ? <strong>{t("models.remote_ok")} </strong> : null}
+              {testResult.text}
+            </div>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 export default function Models() {
   const { t, settings: s, update } = useApp();
   const { models, progress, refresh } = useModels();
   const [devices, setDevices] = useState<string[]>([]);
-
   useEffect(() => {
     api.appInfo().then((i) => setDevices(i.devices));
   }, []);
 
   const byKind = (k: ModelKind[]) => models.filter((m) => k.includes(m.kind));
   const installed = byKind(["asr"]).filter((m) => m.installed).map((m): [string, string] => [m.id, m.name]);
+  if (s.asr_remote_url) installed.push(["remote", `Remote (${s.asr_remote_model})`]);
 
   return (
     <>
@@ -172,6 +293,8 @@ export default function Models() {
           <ModelRow key={m.id} model={m} progress={progress[m.id]} onChanged={refresh} />
         ))}
       </Card>
+
+      <RemoteAsr />
 
       <Card title={t("models.gpu")}>
         <Row label={t("adv.accelerator")} hint={devices.join(", ")}>

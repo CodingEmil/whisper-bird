@@ -15,6 +15,23 @@ pub struct AsrModel {
     pub id: String,
     pub path: PathBuf,
     pub accel: Accelerator,
+    /// Gesetzt = statt der Datei eine OpenAI-kompatible API nutzen.
+    pub remote: Option<Remote>,
+}
+
+impl AsrModel {
+    /// Name für den Verlauf: bei Remote das Modell des Dienstes.
+    pub fn label(&self) -> String {
+        self.remote.as_ref().map(|r| r.model.clone()).unwrap_or_else(|| self.id.clone())
+    }
+}
+
+/// OpenAI-kompatibler Transkriptionsdienst (OpenAI, Groq, speaches, whisper.cpp-Server …).
+#[derive(Clone, Debug)]
+pub struct Remote {
+    pub base_url: String,
+    pub api_key: String,
+    pub model: String,
 }
 
 pub struct AsrOptions<'a> {
@@ -40,10 +57,14 @@ pub struct TimedText {
     pub text: String,
 }
 
+enum Engine {
+    Local { model: Model, session: Session },
+    Remote(Remote),
+}
+
 struct Loaded {
     id: String,
-    model: Model,
-    session: Session,
+    engine: Engine,
     languages: Vec<String>,
     max_audio_ms: i64,
 }
@@ -94,11 +115,23 @@ impl Asr {
     }
 
     /// Lädt das Modell, falls noch nicht (oder ein anderes) geladen ist.
-    pub fn ensure_loaded(&self, id: &str, path: &Path, accel: Accelerator) -> anyhow::Result<()> {
-        self.load_into(&mut self.loaded.lock().unwrap(), id, path, accel)
+    pub fn ensure_loaded(&self, m: &AsrModel) -> anyhow::Result<()> {
+        self.load_into(&mut self.loaded.lock().unwrap(), m)
     }
 
-    fn load_into(&self, guard: &mut Option<Loaded>, id: &str, path: &Path, accel: Accelerator) -> anyhow::Result<()> {
+    fn load_into(&self, guard: &mut Option<Loaded>, m: &AsrModel) -> anyhow::Result<()> {
+        if let Some(remote) = &m.remote {
+            // Nichts zu laden; die Adresse kann sich seit dem letzten Mal geändert haben.
+            *guard = Some(Loaded {
+                id: m.id.clone(),
+                engine: Engine::Remote(remote.clone()),
+                languages: Vec::new(),
+                // Unter dem 25-MB-Limit von OpenAI (WAV: ~13 min); Längeres zerlegt die VAD.
+                max_audio_ms: 600_000,
+            });
+            return Ok(());
+        }
+        let (id, path, accel) = (m.id.as_str(), m.path.as_path(), m.accel);
         if guard.as_ref().map(|l| l.id == id).unwrap_or(false) {
             return Ok(());
         }
@@ -126,8 +159,7 @@ impl Asr {
         );
         *guard = Some(Loaded {
             id: id.to_string(),
-            model,
-            session,
+            engine: Engine::Local { model, session },
             languages: caps.languages,
             max_audio_ms: caps.max_audio_ms,
         });
@@ -139,7 +171,7 @@ impl Asr {
     fn lock_model(&self, opts: &AsrOptions) -> anyhow::Result<MutexGuard<'_, Option<Loaded>>> {
         let mut guard = self.loaded.lock().unwrap();
         if let Some(m) = opts.model {
-            self.load_into(&mut guard, &m.id, &m.path, m.accel)?;
+            self.load_into(&mut guard, m)?;
         }
         Ok(guard)
     }
@@ -202,25 +234,33 @@ impl Asr {
     fn run(&self, pcm: &[f32], opts: &AsrOptions) -> anyhow::Result<AsrResult> {
         let mut guard = self.lock_model(opts)?;
         let loaded = guard.as_mut().ok_or_else(|| anyhow::anyhow!("Kein Modell geladen"))?;
-        let mut run = RunOptions::default();
-        if let Some(lang) = &opts.language {
-            if loaded.languages.is_empty() || loaded.languages.iter().any(|l| l == lang) {
-                run.language = Some(lang.clone());
+        let language = opts
+            .language
+            .clone()
+            .filter(|lang| loaded.languages.is_empty() || loaded.languages.iter().any(|l| l == lang));
+        let started = Instant::now();
+        let (model, session) = match &mut loaded.engine {
+            Engine::Local { model, session } => (model, session),
+            Engine::Remote(remote) => {
+                let result = transcribe_remote(remote, pcm, language.as_deref(), opts.vocabulary);
+                *self.last_used.lock().unwrap() = Instant::now();
+                log::info!("Remote-Transkription: {:.1}s Audio in {:?}", pcm.len() as f32 / 16_000.0, started.elapsed());
+                return result;
             }
-        }
+        };
+        let mut run = RunOptions { language, ..Default::default() };
         if !opts.vocabulary.is_empty() {
-            if loaded.model.supports(Feature::Vocabulary) {
+            if model.supports(Feature::Vocabulary) {
                 run.vocabulary = opts.vocabulary.to_vec();
-            } else if loaded.model.supports(Feature::ContextPrompt) {
+            } else if model.supports(Feature::ContextPrompt) {
                 run.prompt = Some(opts.vocabulary.join(", "));
             }
         }
         if let Some(token) = opts.cancel {
-            loaded.session.set_cancel_token(token);
+            session.set_cancel_token(token);
         }
-        let started = Instant::now();
-        let result = loaded.session.run(pcm, &run);
-        loaded.session.clear_cancel_token();
+        let result = session.run(pcm, &run);
+        session.clear_cancel_token();
         *self.last_used.lock().unwrap() = Instant::now();
         let transcript = result?;
         log::info!(
@@ -274,6 +314,42 @@ impl Asr {
     }
 }
 
+/// POST {base_url}/audio/transcriptions mit der Aufnahme als WAV.
+pub fn transcribe_remote(r: &Remote, pcm: &[f32], language: Option<&str>, vocabulary: &[String]) -> anyhow::Result<AsrResult> {
+    use reqwest::blocking::multipart::{Form, Part};
+    let url = format!("{}/audio/transcriptions", r.base_url.trim_end_matches('/'));
+    let wav = Part::bytes(crate::audio::wav_bytes(pcm)?).file_name("audio.wav").mime_str("audio/wav")?;
+    let mut form = Form::new().part("file", wav).text("model", r.model.clone()).text("response_format", "json");
+    if let Some(lang) = language {
+        form = form.text("language", lang.to_string());
+    }
+    if !vocabulary.is_empty() {
+        form = form.text("prompt", vocabulary.join(", "));
+    }
+    let client = reqwest::blocking::Client::builder().timeout(std::time::Duration::from_secs(120)).build()?;
+    let mut request = client.post(&url).multipart(form);
+    if !r.api_key.is_empty() {
+        request = request.bearer_auth(&r.api_key);
+    }
+    let response = request.send().map_err(|e| {
+        if e.is_timeout() {
+            anyhow::anyhow!("Zeitüberschreitung")
+        } else if e.is_connect() {
+            anyhow::anyhow!("Keine Verbindung zu {}", r.base_url)
+        } else {
+            anyhow::anyhow!("{e}")
+        }
+    })?;
+    let status = response.status();
+    let value: serde_json::Value = response.json().unwrap_or(serde_json::Value::Null);
+    if !status.is_success() {
+        let msg = value["error"]["message"].as_str().unwrap_or("unbekannter Fehler");
+        anyhow::bail!("API-Fehler {status}: {msg}");
+    }
+    let text = value["text"].as_str().ok_or_else(|| anyhow::anyhow!("Antwort ohne Text"))?;
+    Ok(AsrResult { text: text.to_string(), language: None })
+}
+
 /// Fasst nahe Sprachsegmente zu Blöcken bis `max_len` Samples zusammen.
 fn merge_segments(segments: &[(usize, usize)], max_len: usize, max_gap: usize) -> Vec<(usize, usize)> {
     let mut out: Vec<(usize, usize)> = Vec::new();
@@ -291,7 +367,36 @@ fn merge_segments(segments: &[(usize, usize)], max_len: usize, max_gap: usize) -
 
 #[cfg(test)]
 mod tests {
-    use super::merge_segments;
+    use super::{merge_segments, transcribe_remote, Remote};
+    use std::io::{Read, Write};
+
+    #[test]
+    fn remote_schickt_wav_und_liest_text() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let base_url = format!("http://{}/v1", listener.local_addr().unwrap());
+        let server = std::thread::spawn(move || {
+            let (mut conn, _) = listener.accept().unwrap();
+            let mut req = Vec::new();
+            let mut buf = [0u8; 4096];
+            // Bis zur schließenden Multipart-Grenze lesen.
+            while !req.ends_with(b"--\r\n") {
+                let n = conn.read(&mut buf).unwrap();
+                req.extend_from_slice(&buf[..n]);
+            }
+            let body = r#"{"text":"Hallo Welt"}"#;
+            write!(conn, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{body}", body.len()).unwrap();
+            String::from_utf8_lossy(&req).to_string()
+        });
+        let remote = Remote { base_url, api_key: "geheim".into(), model: "whisper-1".into() };
+        let result = transcribe_remote(&remote, &[0.0; 1600], Some("de"), &["Birdy".into()]).unwrap();
+        assert_eq!(result.text, "Hallo Welt");
+        let req = server.join().unwrap();
+        assert!(req.starts_with("POST /v1/audio/transcriptions"));
+        assert!(req.to_lowercase().contains("authorization: bearer geheim"));
+        for part in ["whisper-1", "RIFF", "name=\"language\"\r\n\r\nde", "name=\"prompt\"\r\n\r\nBirdy"] {
+            assert!(req.contains(part), "{part} fehlt");
+        }
+    }
 
     #[test]
     fn merges_close_segments_up_to_limit() {

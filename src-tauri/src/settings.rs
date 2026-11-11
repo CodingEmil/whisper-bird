@@ -87,6 +87,10 @@ pub struct Settings {
 
     // Diktat
     pub asr_model: String,
+    /// OpenAI-kompatible Spracherkennung, gewählt über die Modell-ID „remote“.
+    pub asr_remote_url: String,
+    pub asr_remote_key: String,
+    pub asr_remote_model: String,
     pub language: String,
     pub activation: Activation,
     pub shortcut_dictate: String,
@@ -166,6 +170,7 @@ pub struct Settings {
 }
 
 pub const DEFAULT_ASR_MODEL: &str = "parakeet-ultra";
+pub const REMOTE_ASR_MODEL: &str = "remote";
 pub const DEFAULT_LLM_MODEL: &str = "gemma-4-e4b";
 
 pub fn default_edit_actions(lang: &str) -> Vec<EditAction> {
@@ -244,6 +249,9 @@ impl Default for Settings {
             onboarding_done: false,
 
             asr_model: DEFAULT_ASR_MODEL.into(),
+            asr_remote_url: String::new(),
+            asr_remote_key: String::new(),
+            asr_remote_model: "whisper-1".into(),
             language: "auto".into(),
             activation: Activation::Toggle,
             shortcut_dictate: "Ctrl+Shift+Space".into(),

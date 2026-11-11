@@ -1,6 +1,6 @@
 //! Globaler App-Zustand.
 
-use crate::asr::{Asr, AsrModel};
+use crate::asr::{Asr, AsrModel, Remote};
 use crate::catalog::{self, ModelKind};
 use crate::downloads::Downloads;
 use crate::enhance::Enhancer;
@@ -94,40 +94,50 @@ impl AppState {
         self.model_file(id).map(|p| p.exists()).unwrap_or(false)
     }
 
-    /// Gewähltes Spracherkennungsmodell – oder ein anderes installiertes als Ersatz.
-    pub fn usable_asr_model(&self) -> Option<(String, PathBuf)> {
-        let wanted = self.settings().asr_model;
-        if let Some(p) = self.model_file(&wanted).filter(|p| p.exists()) {
-            return Some((wanted, p));
+    /// Spracherkennung mit dieser ID, falls installiert bzw. (remote) eingerichtet.
+    fn asr_model(&self, s: &Settings, id: &str) -> Option<AsrModel> {
+        if id == settings::REMOTE_ASR_MODEL {
+            return (!s.asr_remote_url.is_empty()).then(|| AsrModel {
+                id: id.into(),
+                path: PathBuf::new(),
+                accel: s.accelerator,
+                remote: Some(Remote {
+                    base_url: s.asr_remote_url.clone(),
+                    api_key: s.asr_remote_key.clone(),
+                    model: s.asr_remote_model.clone(),
+                }),
+            });
         }
-        catalog::MODELS
-            .iter()
-            .filter(|m| m.kind == ModelKind::Asr)
-            .find_map(|m| {
-                let p = self.dirs.models.join(m.filename);
-                p.exists().then(|| (m.id.to_string(), p))
-            })
+        let path = self.model_file(id).filter(|p| p.exists())?;
+        Some(AsrModel { id: id.into(), path, accel: s.accelerator, remote: None })
     }
 
-    /// Lädt das Spracherkennungsmodell (blockierend).
+    /// Gewähltes Spracherkennungsmodell – oder ein anderes installiertes als Ersatz.
+    pub fn usable_asr_model(&self) -> Option<AsrModel> {
+        let s = self.settings();
+        self.asr_model(&s, &s.asr_model).or_else(|| {
+            catalog::MODELS
+                .iter()
+                .filter(|m| m.kind == ModelKind::Asr)
+                .find_map(|m| self.asr_model(&s, m.id))
+        })
+    }
+
+    /// Lädt das Spracherkennungsmodell (blockierend). Liefert den Namen für den Verlauf.
     pub fn load_asr(&self) -> anyhow::Result<String> {
-        let (id, path) = self
+        let m = self
             .usable_asr_model()
             .ok_or_else(|| anyhow::anyhow!(crate::i18n::t(&self.settings().ui_language, "no_model")))?;
-        self.asr.ensure_loaded(&id, &path, self.settings().accelerator)?;
-        Ok(id)
+        self.asr.ensure_loaded(&m)?;
+        Ok(m.label())
     }
 
     /// Modell für Meetings und Dateien: das eigens gewählte, sonst wie beim Diktat.
     pub fn long_asr_model(&self) -> anyhow::Result<AsrModel> {
         let s = self.settings();
-        let (id, path) = self
-            .model_file(&s.meeting_asr_model)
-            .filter(|p| p.exists())
-            .map(|p| (s.meeting_asr_model.clone(), p))
+        self.asr_model(&s, &s.meeting_asr_model)
             .or_else(|| self.usable_asr_model())
-            .ok_or_else(|| anyhow::anyhow!(crate::i18n::t(&s.ui_language, "no_model")))?;
-        Ok(AsrModel { id, path, accel: s.accelerator })
+            .ok_or_else(|| anyhow::anyhow!(crate::i18n::t(&s.ui_language, "no_model")))
     }
 
     /// Nach Meeting oder Datei: Das Diktatmodell zurückholen, damit das nächste Diktat schnell startet.
